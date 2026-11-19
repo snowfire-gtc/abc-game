@@ -1,0 +1,2178 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Буквоград — дизайн-документ игры о живых буквах</title>
+<meta name="description" content="Полный дизайн-документ браузерной WebGL-игры «Буквоград»: буквы живут в изометрическом городе, ходят на работу, собирают слова, создают семьи из слогов и проживают целые жизни.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='6' y='6' width='52' height='52' rx='14' fill='%23F2B32C'/%3E%3Ctext x='32' y='45' font-size='36' font-family='Arial' font-weight='900' text-anchor='middle' fill='%232A2F5B'%3EБ%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Manrope:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F6EFE3; --paper2:#EDE3D0; --card:#FFFDF7; --ink:#2A2F5B; --ink2:#565B85; --line:#D9CDB6;
+  --red:#E8452C; --red-d:#C23318; --blue:#2D6BE4; --green:#2FA65A; --gold:#F2B32C; --gold-d:#B57F0A;
+  --magenta:#D6408F; --teal:#1FA9A0; --night:#171B3A; --acc:var(--ink); --accSoft:rgba(42,47,91,.07);
+  --navH:66px; --rad:16px; --sh:0 10px 30px rgba(42,47,91,.10);
+  --disp:'Unbounded',system-ui,sans-serif; --body:'Manrope',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--paper);color:var(--ink);font-size:16px;line-height:1.65;overflow-x:hidden}
+::selection{background:var(--gold);color:var(--ink)}
+::-webkit-scrollbar{width:11px;height:9px}
+::-webkit-scrollbar-track{background:var(--paper2)}
+::-webkit-scrollbar-thumb{background:var(--ink);border-radius:8px;border:2px solid var(--paper2)}
+::-webkit-scrollbar-thumb:hover{background:var(--gold-d)}
+*{scrollbar-width:thin;scrollbar-color:var(--ink) var(--paper2)}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:2000;opacity:.05;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E")}
+a{color:var(--red-d);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+a:hover{color:var(--red)}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px;border-radius:6px}
+img,svg{max-width:100%}
+.i{width:1.05em;height:1.05em;vertical-align:-.18em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+.mono{font-family:var(--mono)}
+/* ---------- NAV ---------- */
+#nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(246,239,227,.92);backdrop-filter:blur(10px);border-bottom:2px solid var(--ink)}
+#nav .bar{display:flex;align-items:center;gap:14px;height:var(--navH);max-width:1240px;margin:0 auto;padding:0 18px}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--disp);font-weight:900;font-size:19px;color:var(--ink);text-decoration:none;white-space:nowrap}
+.logo b{width:34px;height:34px;border-radius:10px;background:var(--gold);display:grid;place-items:center;font-size:20px;box-shadow:2px 2px 0 var(--ink);transform:rotate(-4deg)}
+.logo small{font-family:var(--mono);font-weight:400;font-size:10px;color:var(--ink2);display:block;line-height:1}
+#navLinks{display:flex;gap:2px;overflow-x:auto;flex:1;padding:6px 2px;scrollbar-width:none}
+#navLinks::-webkit-scrollbar{height:5px}
+#navLinks a{font-weight:600;font-size:13.5px;color:var(--ink2);text-decoration:none;padding:7px 11px;border-radius:99px;white-space:nowrap;border:1.5px solid transparent}
+#navLinks a:hover{color:var(--ink);background:var(--paper2)}
+#navLinks a[aria-current="true"]{color:var(--ink);background:var(--gold);border-color:var(--ink);box-shadow:2px 2px 0 var(--ink)}
+.nav-act{display:flex;gap:8px;align-items:center}
+.chipbtn{display:inline-flex;align-items:center;gap:7px;font:600 13px var(--body);color:var(--ink);background:var(--card);border:2px solid var(--ink);border-radius:99px;padding:8px 14px;cursor:pointer;box-shadow:2px 2px 0 var(--ink);transition:transform .15s,box-shadow .15s;white-space:nowrap}
+.chipbtn:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+.chipbtn:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--ink)}
+.chipbtn.gold{background:var(--gold)}
+.chipbtn[aria-pressed="false"].snd{background:var(--paper2);color:var(--ink2)}
+#progress{position:absolute;left:0;bottom:-2px;height:3px;background:linear-gradient(90deg,var(--red),var(--gold),var(--green),var(--blue));width:0%}
+/* ---------- HERO ---------- */
+#hero{position:relative;padding:calc(var(--navH) + 46px) 0 60px;overflow:hidden;border-bottom:2px solid var(--ink)}
+.aurora{position:absolute;inset:-20%;z-index:0;filter:blur(70px);opacity:.55;pointer-events:none}
+.aurora i{position:absolute;border-radius:50%}
+.aurora i:nth-child(1){width:520px;height:520px;left:-6%;top:-8%;background:radial-gradient(circle,#F2B32C66,transparent 70%);animation:drift1 26s ease-in-out infinite alternate}
+.aurora i:nth-child(2){width:620px;height:620px;right:-10%;top:6%;background:radial-gradient(circle,#2D6BE433,transparent 70%);animation:drift2 32s ease-in-out infinite alternate}
+.aurora i:nth-child(3){width:460px;height:460px;left:32%;bottom:-24%;background:radial-gradient(circle,#E8452C2e,transparent 70%);animation:drift1 38s ease-in-out infinite alternate-reverse}
+.aurora i:nth-child(4){width:380px;height:380px;right:24%;bottom:-10%;background:radial-gradient(circle,#D6408F26,transparent 70%);animation:drift2 24s ease-in-out infinite alternate-reverse}
+@keyframes drift1{to{transform:translate(70px,50px) scale(1.12)}}
+@keyframes drift2{to{transform:translate(-60px,-40px) scale(.9)}}
+.floatL{position:absolute;font-family:var(--disp);font-weight:900;color:transparent;-webkit-text-stroke:2px rgba(42,47,91,.13);z-index:0;pointer-events:none;user-select:none;line-height:1}
+.hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(340px,5fr) minmax(380px,6fr);gap:40px;align-items:start}
+.kicker{display:inline-flex;align-items:center;gap:8px;font:700 11.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--red-d);background:var(--card);border:1.5px dashed var(--red);border-radius:99px;padding:6px 13px;margin-bottom:18px}
+h1{font-family:var(--disp);font-weight:900;font-size:clamp(44px,6.4vw,88px);line-height:1.02;letter-spacing:-.01em}
+h1 .hl{display:inline-block;animation:popIn .7s cubic-bezier(.2,1.6,.4,1) both;animation-delay:calc(var(--i)*70ms)}
+h1 .coin{color:var(--gold-d);text-shadow:3px 3px 0 var(--ink)}
+@keyframes popIn{0%{opacity:0;transform:translateY(34px) scale(.6) rotate(-8deg)}100%{opacity:1;transform:none}}
+.sticker{display:inline-block;font:700 12px var(--body);background:var(--magenta);color:#fff;border:2px solid var(--ink);border-radius:12px;padding:6px 12px;transform:rotate(3deg);box-shadow:3px 3px 0 var(--ink);margin:14px 0 0 6px}
+.tagline{font-size:clamp(16px,1.6vw,19px);color:var(--ink2);max-width:56ch;margin:18px 0 22px;font-weight:600}
+.meta-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px}
+.mchip{font:600 12.5px var(--body);background:var(--card);border:1.5px solid var(--ink);border-radius:99px;padding:6px 12px;box-shadow:2px 2px 0 rgba(42,47,91,.2)}
+.mchip b{color:var(--red-d)}
+.hero-cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:9px;font:800 15px var(--body);text-decoration:none;border:2px solid var(--ink);border-radius:14px;padding:13px 22px;cursor:pointer;box-shadow:3px 3px 0 var(--ink);transition:transform .15s,box-shadow .15s;color:var(--ink);background:var(--card)}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
+.btn:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--ink)}
+.btn.gold{background:var(--gold)}
+.btn.ink{background:var(--ink);color:var(--paper)}
+.hero-note{margin-top:20px;font:600 13px var(--body);color:var(--ink2);display:flex;gap:8px;align-items:center}
+.hero-note .i{color:var(--gold-d)}
+/* ---------- DEMO ---------- */
+.demo{background:var(--card);border:2px solid var(--ink);border-radius:20px;box-shadow:6px 6px 0 var(--ink);overflow:hidden}
+.demo-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 16px;border-bottom:2px solid var(--ink);background:linear-gradient(90deg,var(--gold) 0%,#F7CE68 100%)}
+.demo-head b{font:700 13px var(--disp);letter-spacing:.02em}
+.demo-head span{font:600 11px var(--mono);color:var(--ink);opacity:.75}
+#demoCanvasWrap{position:relative;aspect-ratio:16/10.4;min-height:300px;background:#CFE8F7;cursor:grab;touch-action:none}
+#demoCanvasWrap.grabbing{cursor:grabbing}
+#demoCanvasWrap canvas{display:block;width:100%;height:100%}
+#demoLoading{position:absolute;inset:0;display:grid;place-items:center;font:700 14px var(--mono);color:var(--ink);background:linear-gradient(135deg,#CFE8F7,#F6EFE3)}
+#demoLoading i{display:inline-block;width:14px;height:14px;border-radius:4px;background:var(--gold);border:2px solid var(--ink);margin-right:10px;animation:bnc .7s ease-in-out infinite alternate;vertical-align:-2px}
+@keyframes bnc{to{transform:translateY(-9px) rotate(12deg)}}
+#demoFallback{position:absolute;inset:0;display:none}
+#demoFallback svg{width:100%;height:100%}
+.demo-hint{position:absolute;left:12px;bottom:10px;font:600 11px var(--mono);background:rgba(23,27,58,.72);color:#F6EFE3;padding:5px 10px;border-radius:99px;pointer-events:none}
+#toasts{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;pointer-events:none;z-index:5}
+.toast{font:800 13px var(--body);background:var(--gold);color:var(--ink);border:2px solid var(--ink);border-radius:12px;padding:7px 12px;box-shadow:2px 2px 0 var(--ink);animation:toastIn 2.4s ease both}
+.toast.red{background:var(--red);color:#fff}
+.toast.blue{background:var(--blue);color:#fff}
+.toast.mag{background:var(--magenta);color:#fff}
+@keyframes toastIn{0%{opacity:0;transform:translateY(-10px) scale(.8)}10%,80%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-8px)}}
+.demo-stats{display:flex;flex-wrap:wrap;gap:0;border-top:2px solid var(--ink);background:var(--paper)}
+.demo-stats div{flex:1;min-width:86px;text-align:center;padding:8px 6px;border-right:1.5px dashed var(--line);font:600 11px var(--body);color:var(--ink2)}
+.demo-stats div:last-child{border-right:0}
+.demo-stats b{display:block;font:700 17px var(--mono);color:var(--ink)}
+.demo-stats .tk b{color:var(--gold-d)}
+.demo-stats .cr b{color:var(--red-d)}
+.ctrl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:12px 14px;border-top:2px solid var(--ink);background:var(--card)}
+.ctrl.disabled{opacity:.45;pointer-events:none}
+.cg{display:flex;align-items:center;gap:7px;font:700 11.5px var(--body);color:var(--ink2)}
+.cg output{font:700 11.5px var(--mono);color:var(--ink);min-width:34px}
+.ibtn{width:34px;height:34px;display:grid;place-items:center;border:2px solid var(--ink);border-radius:10px;background:var(--paper);cursor:pointer;color:var(--ink);box-shadow:2px 2px 0 var(--ink);transition:transform .12s,box-shadow .12s;font:800 15px var(--body)}
+.ibtn:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink);background:var(--gold)}
+.ibtn:active{transform:translate(1px,1px);box-shadow:0 0 0 var(--ink)}
+.ibtn[aria-pressed="true"]{background:var(--ink);color:var(--gold)}
+input[type=range]{-webkit-appearance:none;appearance:none;height:22px;background:transparent;cursor:pointer;width:96px}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:4px;background:linear-gradient(90deg,var(--ink),var(--blue));border:1px solid var(--ink)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:6px;background:var(--gold);border:2px solid var(--ink);margin-top:-7px;box-shadow:1.5px 1.5px 0 var(--ink)}
+input[type=range]::-moz-range-track{height:6px;border-radius:4px;background:linear-gradient(90deg,var(--ink),var(--blue));border:1px solid var(--ink)}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:6px;background:var(--gold);border:2px solid var(--ink)}
+.sw{position:relative;display:inline-flex;align-items:center;gap:7px;cursor:pointer;font:700 11.5px var(--body);color:var(--ink2)}
+.sw input{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer}
+.sw i{width:38px;height:22px;border-radius:99px;border:2px solid var(--ink);background:var(--paper2);position:relative;transition:background .2s;flex:none}
+.sw i::after{content:"";position:absolute;top:1.5px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--ink);transition:transform .2s,background .2s}
+.sw input:checked+i{background:var(--teal)}
+.sw input:checked+i::after{transform:translateX(15px);background:#fff}
+.sw input:focus-visible+i{outline:3px solid var(--gold);outline-offset:2px}
+select{font:700 12.5px var(--body);color:var(--ink);background:var(--paper);border:2px solid var(--ink);border-radius:10px;padding:7px 9px;cursor:pointer;box-shadow:2px 2px 0 var(--ink)}
+/* ---------- SECTIONS ---------- */
+main{counter-reset:sec}
+.sec{position:relative;padding:74px 0 66px;border-bottom:2px solid var(--ink);scroll-margin-top:calc(var(--navH) + 14px)}
+.sec::before{content:"";position:absolute;inset:0;background:radial-gradient(720px 340px at 88% 0%,var(--accSoft),transparent 70%);pointer-events:none}
+.sec .wrap{position:relative}
+.kick{display:flex;align-items:center;gap:10px;font:700 11.5px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--acc);margin-bottom:12px}
+.kick::after{content:"";flex:1;height:2px;background:repeating-linear-gradient(90deg,var(--acc) 0 10px,transparent 10px 18px);opacity:.4}
+h2{font-family:var(--disp);font-weight:700;font-size:clamp(26px,3.6vw,42px);line-height:1.12;margin-bottom:16px;counter-increment:sec}
+h2::before{content:counter(sec,decimal-leading-zero);font:900 .55em var(--mono);color:#fff;background:var(--acc);border-radius:10px;padding:5px 10px;margin-right:14px;vertical-align:.32em;box-shadow:2.5px 2.5px 0 var(--ink)}
+h3{font:800 19px var(--body);margin:30px 0 12px;display:flex;align-items:center;gap:9px}
+h3 .i{color:var(--acc)}
+h4{font:800 15px var(--body);margin-bottom:6px}
+.lead{font-size:17.5px;color:var(--ink2);max-width:74ch;font-weight:600;margin-bottom:8px}
+p{max-width:80ch;margin-bottom:12px}
+p b,li b{color:var(--ink)}
+ul.list,ol.list{margin:0 0 14px 4px;list-style:none}
+ul.list li,ol.list li{position:relative;padding-left:26px;margin-bottom:8px;max-width:76ch}
+ul.list li::before{content:"";position:absolute;left:4px;top:.62em;width:9px;height:9px;border-radius:3px;background:var(--acc);transform:rotate(45deg)}
+ol.list{counter-reset:li}
+ol.list li{counter-increment:li}
+ol.list li::before{content:counter(li);position:absolute;left:0;top:.18em;font:700 11px var(--mono);color:#fff;background:var(--acc);width:18px;height:18px;border-radius:6px;display:grid;place-items:center}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:18px 0}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0}
+.card{background:var(--card);border:2px solid var(--ink);border-radius:var(--rad);padding:20px;box-shadow:4px 4px 0 rgba(42,47,91,.16);position:relative}
+.card:hover{box-shadow:5px 5px 0 rgba(42,47,91,.24)}
+.card .num{font:900 13px var(--mono);color:#fff;background:var(--acc);border-radius:8px;padding:3px 8px;display:inline-block;margin-bottom:10px}
+.card p{font-size:14px;color:var(--ink2);margin:0}
+.card h4{font-size:16px}
+.callout{border:2px solid var(--ink);border-left-width:8px;border-radius:12px;background:var(--card);padding:15px 18px;margin:16px 0;max-width:860px}
+.callout b.lab{display:flex;gap:8px;align-items:center;font:800 13px var(--body);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.callout p{margin:0;font-size:14.5px}
+.co-red{border-left-color:var(--red)}.co-red b.lab{color:var(--red-d)}
+.co-gold{border-left-color:var(--gold)}.co-gold b.lab{color:var(--gold-d)}
+.co-blue{border-left-color:var(--blue)}.co-blue b.lab{color:var(--blue)}
+.co-green{border-left-color:var(--green)}.co-green b.lab{color:var(--green)}
+.co-mag{border-left-color:var(--magenta)}.co-mag b.lab{color:var(--magenta)}
+.quote{border:2px solid var(--ink);border-radius:var(--rad);background:var(--paper2);padding:18px 22px;margin:20px 0;max-width:780px;position:relative;box-shadow:4px 4px 0 rgba(42,47,91,.14)}
+.quote::before{content:"«Вестник Буквограда»";position:absolute;top:-12px;left:16px;font:700 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;background:var(--ink);color:var(--paper);padding:3px 10px;border-radius:99px}
+.quote p{font-size:15px;font-style:italic;margin:0;color:var(--ink)}
+.tbl-wrap{overflow-x:auto;border:2px solid var(--ink);border-radius:14px;margin:16px 0;background:var(--card);box-shadow:4px 4px 0 rgba(42,47,91,.14)}
+table.tbl{border-collapse:collapse;width:100%;font-size:13.8px;min-width:560px}
+.tbl th{background:var(--ink);color:var(--paper);font:700 12px var(--body);text-transform:uppercase;letter-spacing:.05em;padding:11px 14px;text-align:left;white-space:nowrap}
+.tbl td{padding:10px 14px;border-top:1.5px solid var(--line);vertical-align:top}
+.tbl tbody tr:nth-child(even){background:rgba(217,205,182,.18)}
+.tbl tbody tr:hover{background:rgba(242,179,44,.14)}
+.tbl .n{font:700 13px var(--mono);white-space:nowrap}
+.tbl .gold{color:var(--gold-d)}.tbl .red{color:var(--red-d)}.tbl .grn{color:var(--green)}.tbl .blu{color:var(--blue)}
+.bl{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:8px;font:900 14px var(--disp);border:2px solid var(--ink);color:#fff;vertical-align:-7px;margin-right:7px;box-shadow:1.5px 1.5px 0 var(--ink)}
+.bl.v{background:var(--red)}.bl.c{background:var(--blue)}.bl.s{background:var(--green)}
+pre.formula{font:700 14px/1.9 var(--mono);background:var(--night);color:#EAF0FF;border:2px solid var(--ink);border-radius:14px;padding:20px 24px;overflow-x:auto;margin:16px 0;box-shadow:4px 4px 0 rgba(42,47,91,.3)}
+pre.formula .g{color:var(--gold)}pre.formula .r{color:#FF8A70}pre.formula .b{color:#7FB0FF}pre.formula .c{color:#8b93c8;font-weight:400}
+.exhibit{border:2.5px solid var(--ink);border-radius:20px;background:var(--card);box-shadow:6px 6px 0 var(--ink);margin:22px 0;overflow:hidden}
+.exhibit-head{display:flex;align-items:center;gap:10px;padding:12px 18px;background:var(--acc);color:#fff;border-bottom:2px solid var(--ink);font:700 13.5px var(--disp)}
+.exhibit-head .tag{margin-left:auto;font:700 10.5px var(--mono);background:var(--gold);color:var(--ink);border:1.5px solid var(--ink);border-radius:99px;padding:3px 10px;letter-spacing:.08em}
+.exhibit-body{padding:20px}
+.two-col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;align-items:start}
+.sticky-col{position:sticky;top:calc(var(--navH) + 20px)}
+.loopchain{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:18px 0}
+.loopchain .ln{display:flex;align-items:center;gap:8px;background:var(--card);border:2px solid var(--ink);border-radius:12px;padding:9px 14px;font:800 13.5px var(--body);box-shadow:2.5px 2.5px 0 rgba(42,47,91,.2)}
+.loopchain .ln .i{color:var(--acc)}
+.loopchain .arr{color:var(--red);font-weight:900;font-size:18px}
+.statrow{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0}
+.statbox{background:var(--card);border:2px solid var(--ink);border-radius:14px;padding:12px 18px;box-shadow:3px 3px 0 rgba(42,47,91,.16);min-width:130px}
+.statbox b{display:block;font:900 24px var(--mono);color:var(--acc)}
+.statbox span{font:600 12px var(--body);color:var(--ink2)}
+/* alphabet */
+#alphaGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:8px}
+.lbtn{aspect-ratio:1;border:2px solid var(--ink);border-radius:12px;font:900 21px var(--disp);color:#fff;cursor:pointer;box-shadow:2.5px 2.5px 0 var(--ink);transition:transform .12s;position:relative}
+.lbtn:hover{transform:translate(-1px,-2px) rotate(-2deg)}
+.lbtn[aria-pressed="true"]{outline:3.5px solid var(--gold);outline-offset:2px;transform:scale(1.06)}
+.lbtn.v{background:var(--red)}.lbtn.c{background:var(--blue)}.lbtn.s{background:var(--green)}
+.lbtn small{position:absolute;right:4px;bottom:2px;font:700 8.5px var(--mono);opacity:.85}
+.dossier{background:var(--card);border:2.5px solid var(--ink);border-radius:18px;padding:20px;box-shadow:5px 5px 0 var(--ink)}
+.dos-top{display:flex;gap:16px;align-items:center;margin-bottom:14px}
+.dos-tile{width:86px;height:98px;border-radius:18px;border:2.5px solid var(--ink);display:grid;place-items:center;font:900 46px var(--disp);color:#fff;box-shadow:3px 3px 0 var(--ink);position:relative;flex:none}
+.dos-tile::before,.dos-tile::after{content:"";position:absolute;top:14px;width:9px;height:11px;border-radius:50%;background:#fff;box-shadow:inset -2.5px 0 0 var(--ink)}
+.dos-tile::before{left:22px}.dos-tile::after{right:22px}
+.dos-tile span{margin-top:16px}
+.dos-kv{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13.5px;margin:10px 0}
+.dos-kv dt{font-weight:800;color:var(--ink2)}
+.dos-kv dd{font-weight:600}
+.dos-quote{font-style:italic;font-size:14px;background:var(--paper2);border-radius:10px;padding:10px 13px;border:1.5px dashed var(--ink2);margin:10px 0}
+/* validator */
+.pair-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.pair-row select{font:900 22px var(--disp);padding:10px 14px;border-radius:14px;min-width:86px}
+.pair-plus{font:900 24px var(--disp);color:var(--magenta)}
+.ppre{font:800 13px var(--mono);border:2px solid var(--ink);background:var(--paper);border-radius:99px;padding:6px 13px;cursor:pointer;box-shadow:2px 2px 0 var(--ink)}
+.ppre:hover{background:var(--gold)}
+#pairCard{border:2px solid var(--ink);border-radius:16px;padding:18px;background:var(--paper);transition:background .3s}
+#pairCard.ok{background:#E7F5EA}#pairCard.bad{background:#FBE7E1}#pairCard.warn{background:#FBF0D2}
+.p-verdict{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.p-verdict .big{font:900 30px var(--disp)}
+.p-verdict .vd{font:800 15px var(--body)}
+#pairCard.ok .vd{color:var(--green)}#pairCard.bad .vd{color:var(--red-d)}#pairCard.warn .vd{color:var(--gold-d)}
+#pRule{font-size:14px;font-weight:600;color:var(--ink2);margin-bottom:12px}
+.harm{height:12px;border:2px solid var(--ink);border-radius:99px;background:var(--card);overflow:hidden;margin:4px 0 12px}
+.harm i{display:block;height:100%;background:linear-gradient(90deg,var(--magenta),var(--gold));width:0%;transition:width .5s cubic-bezier(.2,1,.3,1)}
+.p-facts{display:flex;gap:10px;flex-wrap:wrap;font:700 13px var(--body)}
+.p-facts span{background:var(--card);border:1.5px solid var(--ink);border-radius:99px;padding:5px 12px}
+#pKids{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font:700 12.5px var(--body);color:var(--ink2)}
+.kid{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:2px solid var(--ink);border-radius:10px;padding:4px 9px;font:800 13px var(--body)}
+.kid b{font:900 15px var(--disp)}
+/* calculator */
+.calc-in{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+#wIn{font:900 22px var(--disp);letter-spacing:.12em;text-transform:uppercase;border:2.5px solid var(--ink);border-radius:14px;padding:11px 16px;background:var(--paper);color:var(--ink);width:min(320px,100%);box-shadow:inset 2px 2px 0 rgba(42,47,91,.1)}
+#wIn:focus{outline:3px solid var(--gold)}
+.wpre{font:800 12.5px var(--mono);border:2px solid var(--ink);background:var(--paper);border-radius:99px;padding:6px 12px;cursor:pointer;box-shadow:2px 2px 0 var(--ink)}
+.wpre:hover{background:var(--gold)}
+.calc-ctrl{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;margin:12px 0 16px}
+#wErr{font:700 13px var(--body);color:var(--red-d);min-height:20px;margin-bottom:6px}
+.calc-total{display:flex;align-items:baseline;gap:12px;background:var(--night);color:var(--paper);border:2px solid var(--ink);border-radius:16px;padding:16px 22px;margin-top:14px;flex-wrap:wrap}
+.calc-total b{font:900 40px var(--mono);color:var(--gold)}
+.calc-total span{font:600 13px var(--body);opacity:.85}
+#wMeta{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+#wMeta span{font:700 12px var(--mono);background:var(--paper2);border:1.5px solid var(--ink);border-radius:99px;padding:4px 11px}
+/* life */
+#lifeLog{display:flex;flex-direction:column;gap:7px;margin:14px 0;min-height:120px}
+.life-line{display:flex;gap:11px;align-items:flex-start;background:var(--paper);border:1.5px solid var(--line);border-radius:12px;padding:9px 13px;font-size:14px;font-weight:600;animation:lifeIn .45s ease both;animation-delay:calc(var(--i)*90ms)}
+@keyframes lifeIn{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+.life-line .d{font:700 11px var(--mono);background:var(--ink);color:var(--paper);border-radius:7px;padding:3px 8px;white-space:nowrap;margin-top:1px}
+.life-line.big{border-color:var(--ink);border-width:2px;background:var(--card)}
+.life-line.death{background:var(--night);color:var(--paper);border-color:var(--ink)}
+.life-line.death .d{background:var(--gold);color:var(--ink)}
+#lifeCard{display:none;align-items:center;gap:18px;background:var(--paper2);border:2px solid var(--ink);border-radius:16px;padding:16px 20px;margin-top:8px}
+#lifeCard.show{display:flex}
+#lcTile{width:64px;height:74px;border-radius:14px;border:2.5px solid var(--ink);display:grid;place-items:center;font:900 34px var(--disp);color:#fff;box-shadow:3px 3px 0 var(--ink);flex:none;background:var(--ink2)}
+#lcStats{font:600 13.5px var(--body)}
+#lcStats b{font-family:var(--mono)}
+/* map */
+#mapBox{border:2px solid var(--ink);border-radius:16px;background:linear-gradient(160deg,#DFF0F8,#F6EFE3);overflow:hidden;box-shadow:4px 4px 0 rgba(42,47,91,.16)}
+#mapBox svg{display:block;width:100%;height:auto}
+.zone{cursor:pointer}
+.zone .ztop{transition:filter .2s,opacity .2s}
+.zone:hover .ztop,.zone.hot .ztop{filter:brightness(1.12) saturate(1.2)}
+.zone.hot .zring{opacity:1}
+.zring{opacity:0;transition:opacity .2s}
+#zoneInfo{background:var(--card);border:2px solid var(--ink);border-radius:16px;padding:18px;box-shadow:4px 4px 0 rgba(42,47,91,.16)}
+#ziList{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+#ziList span{font:700 12px var(--body);background:var(--paper2);border:1.5px solid var(--ink);border-radius:99px;padding:4px 11px}
+/* art */
+#palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:12px;margin:16px 0}
+.swatch{border:2px solid var(--ink);border-radius:14px;overflow:hidden;cursor:pointer;background:var(--card);box-shadow:3px 3px 0 rgba(42,47,91,.18);transition:transform .15s;text-align:left;padding:0;font-family:var(--body)}
+.swatch:hover{transform:translateY(-3px)}
+.swatch i{display:block;height:64px;border-bottom:2px solid var(--ink)}
+.swatch div{padding:8px 11px}
+.swatch b{font:800 12.5px var(--body);display:block}
+.swatch span{font:700 11px var(--mono);color:var(--ink2)}
+.bounce-demo{display:flex;gap:26px;align-items:flex-end;background:var(--paper2);border:2px dashed var(--ink);border-radius:14px;padding:22px;margin:14px 0;flex-wrap:wrap}
+.bd{width:52px;height:60px;border-radius:13px;border:2.5px solid var(--ink);display:grid;place-items:center;font:900 26px var(--disp);color:#fff;box-shadow:2.5px 2.5px 0 var(--ink)}
+.bd.b1{background:var(--red);animation:squash 1.1s cubic-bezier(.3,0,.4,1) infinite}
+.bd.b2{background:var(--blue);animation:anticip 1.6s ease-in-out infinite}
+.bd.b3{background:var(--green);animation:follow 1.4s ease-in-out infinite}
+@keyframes squash{0%,100%{transform:translateY(0) scale(1,1)}30%{transform:translateY(-26px) scale(.92,1.12)}55%{transform:translateY(0) scale(1.18,.8)}70%{transform:scale(.95,1.06)}}
+@keyframes anticip{0%,100%{transform:none}20%{transform:scale(1.1,.86)}45%{transform:translateY(-30px) rotate(-8deg)}65%{transform:translateY(0) scale(1.12,.85)}}
+@keyframes follow{0%,100%{transform:rotate(0)}25%{transform:rotate(-10deg) translateY(-8px)}60%{transform:rotate(8deg)}}
+.bd-cap{font:700 11.5px var(--mono);color:var(--ink2);text-align:center;margin-top:8px}
+.colorscript{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:14px 0}
+.cs{border:2px solid var(--ink);border-radius:12px;height:74px;position:relative;overflow:hidden}
+.cs span{position:absolute;left:6px;bottom:5px;font:700 10px var(--mono);background:rgba(23,27,58,.7);color:#fff;border-radius:6px;padding:2px 7px}
+.fontspec{border:2px solid var(--ink);border-radius:14px;background:var(--card);padding:16px 20px;margin-bottom:12px}
+.fontspec .big{font-size:30px;line-height:1.2}
+.fontspec small{font:700 11px var(--mono);color:var(--ink2);display:block;margin-top:6px}
+/* audio */
+.aprev{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:2px solid var(--ink);border-radius:14px;background:var(--card);padding:13px 16px;cursor:pointer;box-shadow:3px 3px 0 rgba(42,47,91,.18);font-family:var(--body);margin-bottom:10px;transition:transform .12s}
+.aprev:hover{transform:translateX(3px);background:#FFF6E0}
+.aprev .pb{width:38px;height:38px;border-radius:50%;background:var(--gold);border:2px solid var(--ink);display:grid;place-items:center;flex:none;box-shadow:2px 2px 0 var(--ink)}
+.aprev.playing .pb{background:var(--magenta);color:#fff;animation:pulse .5s ease infinite alternate}
+@keyframes pulse{to{transform:scale(1.12)}}
+.aprev b{font:800 14.5px var(--body);display:block}
+.aprev span{font:600 12.5px var(--body);color:var(--ink2)}
+/* roadmap */
+.road{display:flex;flex-direction:column;gap:10px;margin:18px 0}
+.mile{display:grid;grid-template-columns:120px 1fr 210px;gap:14px;align-items:center;background:var(--card);border:2px solid var(--ink);border-radius:14px;padding:12px 16px;box-shadow:3px 3px 0 rgba(42,47,91,.14)}
+.mile .mn{font:900 15px var(--disp);color:var(--acc)}
+.mile .mn small{display:block;font:700 10.5px var(--mono);color:var(--ink2)}
+.mile .mb{height:16px;border:2px solid var(--ink);border-radius:99px;background:var(--paper2);overflow:hidden}
+.mile .mb i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--acc),var(--gold))}
+.mile p{font:600 12.5px var(--body);color:var(--ink2);margin:0}
+.check{list-style:none;margin:14px 0}
+.check li{position:relative;padding:9px 12px 9px 42px;border:1.5px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--card);font-size:14.5px;font-weight:600}
+.check li::before{content:"✓";position:absolute;left:12px;top:9px;width:21px;height:21px;border-radius:7px;background:var(--green);color:#fff;font:900 13px var(--body);display:grid;place-items:center;border:2px solid var(--ink)}
+/* footer */
+footer{background:var(--night);color:var(--paper);padding:52px 0 40px;position:relative;overflow:hidden}
+footer::before{content:"АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";position:absolute;top:8px;left:0;right:0;font:900 44px var(--disp);color:rgba(246,239,227,.05);white-space:nowrap;pointer-events:none}
+footer .wrap{position:relative;display:flex;flex-wrap:wrap;gap:26px;align-items:center;justify-content:space-between}
+footer h3{font:900 24px var(--disp);color:var(--gold);margin:0 0 6px}
+footer p{color:#B9BEDF;font-size:13.5px;margin:0}
+footer .btn{border-color:var(--gold);box-shadow:3px 3px 0 var(--gold)}
+#toTop{position:fixed;right:18px;bottom:18px;z-index:900;width:46px;height:46px;border-radius:14px;border:2px solid var(--ink);background:var(--gold);color:var(--ink);display:grid;place-items:center;cursor:pointer;box-shadow:3px 3px 0 var(--ink);opacity:0;pointer-events:none;transition:opacity .3s,transform .15s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{transform:translateY(-3px)}
+#gToast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,80px);z-index:1500;background:var(--ink);color:var(--paper);font:700 13.5px var(--body);border:2px solid var(--gold);border-radius:99px;padding:11px 22px;transition:transform .35s cubic-bezier(.2,1.2,.3,1);pointer-events:none;box-shadow:0 10px 30px rgba(23,27,58,.4)}
+#gToast.show{transform:translate(-50%,0)}
+.rv{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.8,.3,1);transition-delay:var(--d,0ms)}
+.rv.in{opacity:1;transform:none}
+noscript .nsn{display:block;background:var(--red);color:#fff;font:700 14px var(--body);padding:12px 20px;text-align:center;margin-top:var(--navH)}
+@media (max-width:1023px){
+  .hero-grid{grid-template-columns:1fr}
+  .two-col{grid-template-columns:1fr}
+  .sticky-col{position:static}
+  .grid4{grid-template-columns:1fr 1fr}
+  .grid3{grid-template-columns:1fr 1fr}
+  .mile{grid-template-columns:96px 1fr;grid-template-rows:auto auto}
+  .mile p{grid-column:1/-1}
+}
+@media (max-width:680px){
+  :root{--navH:104px}
+  #nav .bar{flex-wrap:wrap;height:auto;padding:8px 12px;row-gap:4px}
+  #navLinks{order:3;width:100%;flex-basis:100%}
+  .logo small{display:none}
+  .grid2,.grid3,.grid4{grid-template-columns:1fr}
+  .sec{padding:52px 0 46px}
+  h2::before{display:inline-block;margin-bottom:6px}
+  .colorscript{grid-template-columns:repeat(3,1fr)}
+  .chipbtn .bt{display:none}
+  #demoCanvasWrap{min-height:260px}
+  .ctrl{gap:8px 10px}
+  input[type=range]{width:78px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.001s!important}
+  .rv{opacity:1;transform:none}
+}
+@media print{
+  #nav,#hero .demo,.ctrl,#toTop,#gToast,.hero-cta,.exhibit-head .tag,.aprev,.floatL,.aurora,body::after{display:none!important}
+  body{background:#fff;color:#000;font-size:11.5px}
+  .sec{border-color:#999;padding:22px 0;page-break-inside:avoid}
+  .card,.tbl-wrap,.callout,pre.formula,.exhibit{box-shadow:none;break-inside:avoid}
+  h2::before{background:#333}
+  #hero{padding-top:10px}
+  footer{background:#fff;color:#000}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-token" viewBox="0 0 24 24"><path d="M12 2l8.5 5v10L12 22l-8.5-5V7z" fill="currentColor" stroke="none" opacity=".25"/><path d="M12 2l8.5 5v10L12 22l-8.5-5V7z"/><path d="M8.5 9h7M12 9v7"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></symbol>
+<symbol id="i-factory" viewBox="0 0 24 24"><path d="M3 21V9l6 4V9l6 4V4h6v17z"/><path d="M7 17h2m4 0h2"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 4h7v16H4a2 2 0 01-2-2V6a2 2 0 012-2zm7 0h9a2 2 0 012 2v12a2 2 0 01-2 2h-9"/><path d="M6 8h3m-3 4h3"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 21S3 14 3 8.5A4.5 4.5 0 0112 6a4.5 4.5 0 019 2.5C21 14 12 21 12 21z"/></symbol>
+<symbol id="i-egg" viewBox="0 0 24 24"><path d="M12 3c4 0 7 5.5 7 10a7 7 0 01-14 0c0-4.5 3-10 7-10z"/><path d="M9 13l2 2 2-2 2 2"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.6 5.6L20 9.4l-4 4 1 5.9-5-2.8-5 2.8 1-5.9-4-4 5.4-.8z"/></symbol>
+<symbol id="i-car" viewBox="0 0 24 24"><path d="M4 15l1.5-6A2 2 0 017.4 7h9.2a2 2 0 011.9 2L20 15"/><path d="M3 15h18v4h-2.5M5.5 19H3v-4"/><circle cx="7.5" cy="18.5" r="1.8"/><circle cx="16.5" cy="18.5" r="1.8"/></symbol>
+<symbol id="i-rain" viewBox="0 0 24 24"><path d="M7 15a5 5 0 111-9.9A6 6 0 0119 8a4 4 0 01-1 7"/><path d="M8 18l-1 3m5-3l-1 3m5-3l-1 3"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.5 4.5l2 2m11 11l2 2m0-15l-2 2m-11 11l-2 2"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 4h4v16H7zM13 4h4v16h-4z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-snd" viewBox="0 0 24 24"><path d="M4 9v6h4l6 5V4L8 9z"/><path d="M17 8a6 6 0 010 8m2.5-11a10 10 0 010 14"/></symbol>
+<symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h4l6 5V4L8 9z"/><path d="M17 9l5 6m0-6l-5 6"/></symbol>
+<symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-5-5m5 5l5-5"/><path d="M4 21h16"/></symbol>
+<symbol id="i-up" viewBox="0 0 24 24"><path d="M12 20V5m0 0l-6 6m6-6l6 6"/></symbol>
+<symbol id="i-dice" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 10a8 8 0 111.5 7"/><path d="M4 4v6h6"/></symbol>
+<symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 4l-4 4 4 4M3 8h13m1 12l4-4-4-4m4 4H8"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 6.5"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3L2 21h20z"/><path d="M12 10v5m0 3v.5"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-print" viewBox="0 0 24 24"><path d="M7 8V3h10v5M7 17H3V8h18v9h-4"/><path d="M7 14h10v7H7z"/></symbol>
+<symbol id="i-zoomin" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5M8 11h6m-3-3v6"/></symbol>
+<symbol id="i-zoomout" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5M8 11h6"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 2v6m0 8v6M2 12h6m8 0h6M5 5l4 4m6 6l4 4m0-14l-4 4m-6 6l-4 4"/></symbol>
+<symbol id="i-pill" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M9.5 8.5l5 7"/></symbol>
+</defs></svg>
+
+<nav id="nav" aria-label="Разделы документа">
+  <div class="bar">
+    <a class="logo" href="#hero"><b>Б</b><span>Буквоград<small>GDD v1.0 · 19.11.2026</small></span></a>
+    <div id="navLinks">
+      <a href="#concept">Концепция</a><a href="#world">Город</a><a href="#letters">Буквы</a><a href="#words">Слова</a><a href="#economy">Экономика</a><a href="#family">Семья</a><a href="#life">Жизнь и смерть</a><a href="#art">Арт</a><a href="#audio">Звук</a><a href="#tech">Тех-ТЗ</a><a href="#plan">План</a>
+    </div>
+    <div class="nav-act">
+      <button class="chipbtn snd" id="sndBtn" aria-pressed="true" title="Один переключатель глушит весь звук страницы"><svg class="i"><use href="#i-snd"/></svg><span class="bt" id="sndLbl">Звук: вкл</span></button>
+      <button class="chipbtn gold" id="dlBtn" title="Скачать полный дизайн-документ в Markdown"><svg class="i"><use href="#i-dl"/></svg><span class="bt">.md</span></button>
+    </div>
+  </div>
+  <div id="progress"></div>
+</nav>
+<noscript><span class="nsn">Интерактивные макеты требуют JavaScript. Сам документ полностью читается и без него.</span></noscript>
+
+<header id="hero">
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <span class="floatL" data-plx="0.12" style="font-size:200px;left:-40px;top:60px" aria-hidden="true">Ж</span>
+  <span class="floatL" data-plx="0.22" style="font-size:150px;right:4%;top:30px" aria-hidden="true">Ё</span>
+  <span class="floatL" data-plx="0.08" style="font-size:170px;left:38%;bottom:-50px" aria-hidden="true">Ю</span>
+  <div class="wrap hero-grid">
+    <div>
+      <span class="kicker"><svg class="i"><use href="#i-book"/></svg>Дизайн-документ · версия 1.0 · утверждён мэром Я</span>
+      <h1 aria-label="Буквоград"><span class="hl" style="--i:0">Б</span><span class="hl" style="--i:1">У</span><span class="hl" style="--i:2">К</span><span class="hl" style="--i:3">В</span><span class="hl coin" style="--i:4">О</span><span class="hl" style="--i:5">Г</span><span class="hl" style="--i:6">Р</span><span class="hl" style="--i:7">А</span><span class="hl" style="--i:8">Д</span></h1>
+      <span class="sticker">и не забудь про Ё!</span>
+      <p class="tagline">Уютный симулятор живого алфавита: буквы выходят из домиков, едут на работу, собирают слова за токены, женятся на слогах, растят буквы-дети и однажды улетают к звёздам.</p>
+      <div class="meta-chips">
+        <span class="mchip"><b>Жанр</b> · тайкун-сим с лингво-головоломкой</span>
+        <span class="mchip"><b>Платформа</b> · браузер, WebGL</span>
+        <span class="mchip"><b>Сессия</b> · 5–15 мин + офлайн-жизнь</span>
+        <span class="mchip"><b>Аудитория</b> · 12+, казуалы и логофилы</span>
+        <span class="mchip"><b>Модель</b> · F2P, без pay-to-win</span>
+      </div>
+      <div class="hero-cta">
+        <a class="btn gold" href="#concept"><svg class="i"><use href="#i-book"/></svg>Читать ТЗ</a>
+        <button class="btn ink" id="dlBtnHero"><svg class="i"><use href="#i-dl"/></svg>Скачать документ (.md)</button>
+      </div>
+      <p class="hero-note"><svg class="i"><use href="#i-spark"/></svg>Справа — живой макет концепции на WebGL. Блоки со значком «Потрогай» интерактивны: это правила игры, а не картинки.</p>
+    </div>
+    <div class="demo" id="demoWrap">
+      <div class="demo-head"><b>ЖИВОЙ МАКЕТ · квартал Азбуковка</b><span>день = 60 с · формула наград из §04</span></div>
+      <div id="demoCanvasWrap" role="img" aria-label="Изометрический макет города: буквы ходят из домов через дорогу в словоцех и собирают слова">
+        <div id="demoLoading"><span><i></i>Печатный станок разогревается…</span></div>
+        <div id="demoFallback" aria-hidden="true">
+          <svg viewBox="0 0 640 416" preserveAspectRatio="xMidYMid slice">
+            <rect width="640" height="416" fill="#CFE8F7"/>
+            <circle cx="560" cy="60" r="30" fill="#F2B32C" stroke="#2A2F5B" stroke-width="3"/>
+            <polygon points="320,120 590,255 320,390 50,255" fill="#8FCB7B" stroke="#2A2F5B" stroke-width="3"/>
+            <polygon points="140,230 320,140 500,230 320,320" fill="#565B85" stroke="#2A2F5B" stroke-width="3"/>
+            <g stroke="#2A2F5B" stroke-width="3">
+              <polygon points="180,190 230,165 280,190 230,215" fill="#FFFDF7"/><polygon points="180,190 180,230 230,255 230,215" fill="#E8452C"/><polygon points="280,190 280,230 230,255 230,215" fill="#C23318"/>
+              <polygon points="360,180 410,155 460,180 410,205" fill="#FFFDF7"/><polygon points="360,180 360,220 410,245 410,205" fill="#1FA9A0"/><polygon points="460,180 460,220 410,245 410,205" fill="#157F78"/>
+              <polygon points="270,270 330,240 390,270 330,300" fill="#F2B32C"/><polygon points="270,270 270,305 330,335 330,300" fill="#2A2F5B"/><polygon points="390,270 390,305 330,335 330,300" fill="#171B3A"/>
+            </g>
+            <g font-family="Unbounded,Arial" font-weight="900" font-size="26" text-anchor="middle">
+              <g><rect x="120" y="285" width="40" height="46" rx="10" fill="#E8452C" stroke="#2A2F5B" stroke-width="3"/><text x="140" y="318" fill="#fff">Б</text></g>
+              <g><rect x="175" y="300" width="40" height="46" rx="10" fill="#2D6BE4" stroke="#2A2F5B" stroke-width="3"/><text x="195" y="333" fill="#fff">К</text></g>
+              <g><rect x="430" y="290" width="40" height="46" rx="10" fill="#E8452C" stroke="#2A2F5B" stroke-width="3"/><text x="450" y="323" fill="#fff">О</text></g>
+              <g><rect x="485" y="270" width="40" height="46" rx="10" fill="#2D6BE4" stroke="#2A2F5B" stroke-width="3"/><text x="505" y="303" fill="#fff">Т</text></g>
+            </g>
+            <text x="320" y="52" font-family="JetBrains Mono,monospace" font-size="14" font-weight="700" fill="#2A2F5B" text-anchor="middle">WebGL недоступен — показан статичный макет. Документ ниже работает полностью.</text>
+          </svg>
+        </div>
+        <div id="toasts" aria-hidden="true"></div>
+        <div class="demo-hint">тяни мышью — поверни город</div>
+      </div>
+      <div class="demo-stats" aria-label="Живые показатели макета">
+        <div><b id="stDay">1</b>день</div>
+        <div><b id="stWords">0</b>слов собрано</div>
+        <div class="tk"><b id="stTok">0</b>токенов ◈</div>
+        <div class="cr"><b id="stCrash">0</b>ДТП</div>
+      </div>
+      <div class="ctrl" id="demoCtrl" aria-label="Панель управления макетом">
+        <button class="ibtn" id="cPause" aria-pressed="false" title="Пауза / продолжить"><svg class="i"><use href="#i-pause"/></svg></button>
+        <div class="cg">Скорость<input type="range" id="cSpeed" min="0.5" max="3" step="0.25" value="1" aria-label="Скорость симуляции"><output id="cSpeedV">×1</output></div>
+        <div class="cg">Время<input type="range" id="cTime" min="0" max="24" step="0.1" value="9" aria-label="Время суток"><output id="cTimeV">09:00</output></div>
+        <div class="cg">Буквы<button class="ibtn" id="cPopM" title="Меньше букв">−</button><output id="cPopV">8</output><button class="ibtn" id="cPopP" title="Больше букв">+</button></div>
+        <label class="sw"><input type="checkbox" id="cRain"><i></i>Дождь</label>
+        <label class="sw"><input type="checkbox" id="cLight" checked><i></i>Светофор</label>
+        <div class="cg">Заказ<select id="cWord" aria-label="Слово-заказ"><option>КОТ</option><option>ДОМ</option><option>МАМА</option><option>АЗБУКА</option><option>БУКВА</option><option>СЛОВО</option><option>ДРУЖБА</option><option>МОЛОКО</option><option>СЧАСТЬЕ</option></select></div>
+        <button class="ibtn" id="cZoomOut" title="Отдалить"><svg class="i"><use href="#i-zoomout"/></svg></button>
+        <button class="ibtn" id="cZoomIn" title="Приблизить"><svg class="i"><use href="#i-zoomin"/></svg></button>
+        <button class="ibtn" id="cRand" title="Пересобрать квартал"><svg class="i"><use href="#i-dice"/></svg></button>
+        <button class="ibtn" id="cReset" title="Сбросить макет"><svg class="i"><use href="#i-reset"/></svg></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main id="doc">
+
+<!-- 01 CONCEPT -->
+<section class="sec" id="concept" style="--acc:#2A2F5B;--accSoft:rgba(42,47,91,.07)">
+  <div class="wrap">
+    <div class="kick" data-md-skip>Рубрика · видение</div>
+    <h2 class="rv">Концепция и петли игры</h2>
+    <p class="lead rv">«Буквоград» — изометрический город, где живут все 33 буквы русского алфавита. Игрок — мэр-Грамотей: он строит кварталы, открывает слова-заказы, сватает буквы по правилам русских слогов и наблюдает, как из этой возни рождаются слова, семьи и целые биографии.</p>
+    <p class="rv"> Elevator pitch: <b>«Смешарики встречают типографику»</b>. Каждая буква — пухлый мультяшный персонаж с характером, кошельком и судьбой. Утром буквы выпорхивают из домиков-литер, пешком или на транспорте добираются до словоцехов и встают в печатные слоты. Когда слово собрано — станок гудит, конфетти из запятых, буквы получают токены. Чем длиннее и реже слово — тем жирнее выплата. Вечером — щи, диван, свидание в парке. А потом свадьба, яйцо-«Я» в Детском доме, и маленькая буква идёт в школу «Букварик».</p>
+    <h3 class="rv"><svg class="i"><use href="#i-star"/></svg>Четыре столпа дизайна</h3>
+    <div class="grid4">
+      <div class="card rv" style="--d:0ms"><span class="num">П1</span><h4>Слово — это работа</h4><p>Язык — производственная механика, а не викторина. Игрок собирает слова из живых работников и чувствует фонетику руками.</p></div>
+      <div class="card rv" style="--d:80ms"><span class="num">П2</span><h4>Живой алфавит</h4><p>У каждой буквы характер, потребности, семья и биография. Игрок привязывается к букве Ж, которая жужжит на самокате.</p></div>
+      <div class="card rv" style="--d:160ms"><span class="num">П3</span><h4>Уютный хаос</h4><p>Мультяшный город с абсурдными новостями: Ё пикетирует мэрию, гласные бастуют, Ъ молча считает всё.</p></div>
+      <div class="card rv" style="--d:240ms"><span class="num">П4</span><h4>Слоги решают</h4><p>Семья возможна только из пары, образующей русский слог. «Жи-ши пиши с И» — игровое правило, а не школьная скука.</p></div>
+    </div>
+    <h3 class="rv"><svg class="i"><use href="#i-reset"/></svg>Главная петля (макро)</h3>
+    <div class="loopchain rv" data-md-skip>
+      <span class="ln"><svg class="i"><use href="#i-home"/></svg>Дом</span><span class="arr">→</span>
+      <span class="ln"><svg class="i"><use href="#i-car"/></svg>Дорога на работу</span><span class="arr">→</span>
+      <span class="ln"><svg class="i"><use href="#i-factory"/></svg>Сборка слова</span><span class="arr">→</span>
+      <span class="ln"><svg class="i"><use href="#i-token"/></svg>Токены</span><span class="arr">→</span>
+      <span class="ln"><svg class="i"><use href="#i-pill"/></svg>Еда · мебель · транспорт · жильё</span><span class="arr">→</span>
+      <span class="ln"><svg class="i"><use href="#i-heart"/></svg>Семья из слога</span><span class="arr">→</span>
+      <span class="ln"><svg class="i"><use href="#i-egg"/></svg>Буква-дитя</span><span class="arr">→</span>
+      <span class="ln"><svg class="i"><use href="#i-star"/></svg>Поколения</span>
+    </div>
+    <p class="rv">Петля дня: <b>дом → дорога → слово → токены → траты → семья → дети → поколения</b>. Микропетля буквы: потребности (сытость, энергия, настроение, здоровье) толкают её на работу и в магазины; игрок не управляет каждой буквой напрямую, а создаёт условия — это сим-тайкун, не нянька.</p>
+    <h3 class="rv"><svg class="i"><use href="#i-eye"/></svg>Роль игрока и режимы</h3>
+    <ul class="list rv">
+      <li><b>Мэр-строитель:</b> размещает здания и дороги на тайловой сетке, улучшает словоцехи, ставит светофоры и зебры.</li>
+      <li><b>Мэр-редактор:</b> выбирает слово-заказ из трёх предложений (реролл — 10 Т), решает, какое слово печатать сегодня. Это главная головоломка: подобрать заказ под буквы, которые у тебя живут.</li>
+      <li><b>Мэр-сваха:</b> сводит совместимые пары, оплачивает пошлины, планирует жильё под семьи и детей.</li>
+      <li><b>Активный режим:</b> «ручная вёрстка» — игрок сам перетаскивает букв в слоты и попадает в ритм станка (мини-игра) за бонус качества до ×1,5.</li>
+      <li><b>Идл-режим:</b> город живёт сам при скоростях ×1/×2/×4; ночь проскакивает ускоренно. Офлайн-прогресс досимулируется до 8 часов и подаётся газетой «Пока вас не было…».</li>
+    </ul>
+    <h3 class="rv"><svg class="i"><use href="#i-play"/></svg>Первые 30 минут (сценарий онбординга)</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Шаг</th><th>Время</th><th>Событие</th><th>Что понимает игрок</th></tr></thead>
+      <tbody>
+        <tr><td class="n">1</td><td class="n">0:00</td><td>Маскот «Я» встречает: «Я последняя в алфавите, но первая в мэрии!». Стартовые жители: Д, О, М, А, К, Т.</td><td>Буквы — персонажи</td></tr>
+        <tr><td class="n">2</td><td class="n">0:40</td><td>Заказ «ДОМ» уже на станке. Буквы сами выходят из общаги и идут через зебру.</td><td>Город живёт сам</td></tr>
+        <tr><td class="n">3</td><td class="n">1:30</td><td>Слово собрано: +9 Т, конфетти. Я объясняет формулу одной фразой: «Длиннее и реже — дороже».</td><td>Слова = деньги</td></tr>
+        <tr><td class="n">4</td><td class="n">3:00</td><td>Буква К голодает. Игрок закупает булки «Б» в кафе.</td><td>Потребности и стоки</td></tr>
+        <tr><td class="n">5</td><td class="n">6:00</td><td>Скриптовое лёгкое ДТП на перекрёстке (все целы). Я вздыхает: «Светофор бы не помешал».</td><td>Риски и инфраструктура</td></tr>
+        <tr><td class="n">6</td><td class="n">10:00</td><td>Игрок ставит светофор (40 Т) и строит первую комнату (150 Т). Заселяет М и А.</td><td>Стройка и жильё</td></tr>
+        <tr><td class="n">7</td><td class="n">15:00</td><td>Я подсвечивает пару М+А: «Слышите? МА! Это слог. Это судьба». Открывается ЗАГС.</td><td>Правило слога</td></tr>
+      </tbody>
+    </table></div>
+    <div class="quote rv"><p>«Вчера буква Ы отказалась выходить на смену: „Ни одно слово не начинается с меня!“ Мэрия срочно рассматривает заказ „ЫКАНИЕ“. Буква Ё требует ставить над ней точки — и, кажется, права».</p></div>
+    <p class="rv"><b>Референсы:</b> Monument Valley (изометрия и тишина), Two Point Hospital (юмор симов), Katamari Damacy (цветовая смелость), «Смешарики» (пухлость характеров). <b>Анти-референс:</b> сухие «обучающие азбуки» — обучение здесь побочный эффект удовольствия.</p>
+  </div>
+</section>
+
+<!-- 02 WORLD -->
+<section class="sec" id="world" style="--acc:#1FA9A0;--accSoft:rgba(31,169,160,.09)">
+  <div class="wrap">
+    <div class="kick" data-md-skip>Рубрика · мир</div>
+    <h2 class="rv">Город и здания</h2>
+    <p class="lead rv">Тайловая карта 48×48 в изометрии 2:1. Шесть районов, кольцевая дорога, словоцехи с конвейерами. Город — витрина симуляции: всё, что делает буква, видно на улице.</p>
+    <div class="two-col">
+      <div>
+        <div id="mapBox" class="rv" data-md-skip></div>
+        <p class="rv" style="font-size:13px;color:var(--ink2)" data-md-skip>Наведи или тапни по району — карта живая.</p>
+      </div>
+      <div id="zoneInfo" class="rv sticky-col" data-md-skip>
+        <h4 id="ziName" style="font-size:18px">Азбуковка · жилой квартал</h4>
+        <p id="ziDesc" style="font-size:14px;color:var(--ink2)">Домики-литеры: дом А — шалаш с крышей-«А», дом О — круглый колобок, у Ш три трубы.从这里 буквы выходят на смену.</p>
+        <div id="ziList"></div>
+      </div>
+    </div>
+    <h3 class="rv"><svg class="i"><use href="#i-home"/></svg>Районы</h3>
+    <ul class="list rv">
+      <li><b>Азбуковка</b> — жильё шести тиров, от общаги «Ы» до пентхауса «Ю». Дом растёт визуально при апагрейде.</li>
+      <li><b>Словоцеха</b> — промзона: пять производств слова, у каждого свой диапазон длины и своя очередь заказов.</li>
+      <li><b>Центр</b> — Мэрия «Я», Площадь Алфавита (парады каждые 7 дней), Доска почёта со словом дня.</li>
+      <li><b>Базарная Б</b> — рынок еды, мебели и транспорта; кафе «Щи да Каша».</li>
+      <li><b>Слоговой квартал</b> — ЗАГС «Слоговой Союз», Детский дом «Аист» с капустной грядкой, школа «Букварик».</li>
+      <li><b>Тихий Ъ</b> — парк «Ёлки-палки», больница «Айболит-А» и Аллея Памяти с надгробиями-литерами.</li>
+    </ul>
+    <h3 class="rv"><svg class="i"><use href="#i-factory"/></svg>Каталог зданий</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Здание</th><th>Цена</th><th>Вместимость / эффект</th><th>Открытие</th></tr></thead>
+      <tbody>
+        <tr><td><span class="bl c">Я</span>Мэрия «Я»</td><td class="n gold">старт</td><td>Приказы, налоги, сватовство, премии буквам</td><td>старт</td></tr>
+        <tr><td><span class="bl c">П</span>Типография «Печатный Двор»</td><td class="n gold">старт</td><td>Слова 2–4 буквы, 8 рабочих слотов</td><td>старт</td></tr>
+        <tr><td><span class="bl c">З</span>Фабрика Заголовков</td><td class="n gold">600 Т</td><td>Слова 4–6, конвейер ×1,2 скорость</td><td class="n">25 слов в Словаре</td></tr>
+        <tr><td><span class="bl c">В</span>Редакция «Вестник»</td><td class="n gold">1 200 Т</td><td>Слова 5–8, «горящие» заказы ×1,5</td><td class="n">60 слов</td></tr>
+        <tr><td><span class="bl c">К</span>Словолитейный Комбинат</td><td class="n gold">2 500 Т</td><td>Слова 8–12, ночная смена ×1,3</td><td class="n">120 слов</td></tr>
+        <tr><td><span class="bl c">Э</span>Академия «Энциклопедия»</td><td class="n gold">5 000 Т</td><td>Слова 12–15, только уровень 7+</td><td class="n">250 слов</td></tr>
+        <tr><td><span class="bl v">Щ</span>Кафе «Щи да Каша»</td><td class="n gold">120 Т</td><td>4 стола, продажа еды с маржой мэра 30%</td><td>старт</td></tr>
+        <tr><td><span class="bl c">Б</span>Рынок «Базарная Б»</td><td class="n gold">150 Т</td><td>Мебель, транспорт, оптовые закупки еды</td><td>старт</td></tr>
+        <tr><td><span class="bl v">А</span>Больница «Айболит-А»</td><td class="n gold">250 Т</td><td>4 койки, лечение 30–120 Т за курс</td><td>первая болезнь</td></tr>
+        <tr><td><span class="bl v">С</span>Аптека</td><td class="n gold">80 Т</td><td>Витаминки «С», страховки «ОСАГО-Ъ»</td><td>старт</td></tr>
+        <tr><td><span class="bl c">Б</span>Школа «Букварик»</td><td class="n gold">200 Т</td><td>Подростки учатся: +одарённость, рост уровня ×1,5</td><td>первый ребёнок</td></tr>
+        <tr><td><span class="bl s">♥</span>ЗАГС «Слоговой Союз»</td><td class="n gold">300 Т</td><td>Свадьбы, проверка слогов, пошлина мэру 50%</td><td>шаг 7 онбординга</td></tr>
+        <tr><td><span class="bl v">А</span>Детский дом «Аист»</td><td class="n gold">350 Т</td><td>2 яйца-«Я» одновременно, очередь 1 день</td><td>первая свадьба</td></tr>
+        <tr><td><span class="bl s">Ё</span>Парк «Ёлки-палки»</td><td class="n gold">100 Т</td><td>+настроение, свидания, пенсии и голуби-«Г»</td><td>старт</td></tr>
+        <tr><td><span class="bl c">Т</span>Трамвайное депо + пути</td><td class="n gold">500 Т + 15 Т/тайл</td><td>Массовый транспорт: безопасно, но по расписанию</td><td class="n">население 20</td></tr>
+        <tr><td><span class="bl c">О</span>Остановка</td><td class="n gold">60 Т</td><td>Абонемент на автобус, ожидание до 40 с</td><td>старт</td></tr>
+        <tr><td><span class="bl s">Ъ</span>Аллея Памяти</td><td class="n gold">город сам</td><td>Появляется при первой смерти; эпитафии — лучшие слова</td><td>событие</td></tr>
+      </tbody>
+    </table></div>
+    <h3 class="rv"><svg class="i"><use href="#i-car"/></svg>Дороги, трафик и опоздания</h3>
+    <ul class="list rv">
+      <li>Асфальт — <b>5 Т/тайл</b>. Зебра — 20 Т (−30% риска ДТП), светофор — 40 Т (−50%), «лежачий полицейский Ь» — 25 Т (−20% скорости, −40% риска), фонарь — 15 Т (ночью +настроение, −10% риска).</li>
+      <li>Агенты ищут путь A* по дорожной сетке; при &gt;6 машинах на сегменте — <b>пробка</b>: скорость ×0,4, настроение опаздывающих падает.</li>
+      <li>Слот простаивает, если буква опоздала; «горящий» заказ с дедлайном 2 дня при провале бьёт по репутации города (−заказы на день).</li>
+      <li>Трамвай и автобус — безопасная альтернатива личному «Жуку»: игрок решает дилемму «быстро и рискованно vs медленно и надёжно».</li>
+    </ul>
+    <h3 class="rv"><svg class="i"><use href="#i-sun"/></svg>Расписание дня (1 игровой день = 6 реальных минут при ×1)</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Часы</th><th>Что делает город</th></tr></thead>
+      <tbody>
+        <tr><td class="n">06–08</td><td>Подъём, завтрак дома или в кафе, буквы выходят из дверей-литер</td></tr>
+        <tr><td class="n">08–09</td><td>Час пик: пешком по зебрам, самокаты, «Жуки», трамвай звенит</td></tr>
+        <tr><td class="n">09–16</td><td>Смена: конвейеры собирают слова; обед 12–13 (сытость −)</td></tr>
+        <tr><td class="n">16–18</td><td>Шопинг на Базарной Б, парк, свидания будущих слогов</td></tr>
+        <tr><td class="n">18–22</td><td>Ужин, телевизор «ТБ», рояль «Р», семейные советы о ребёнке</td></tr>
+        <tr><td class="n">22–06</td><td>Сон: энергия +60…80 (по кровати), здоровье +3 при сытости; ночь ×3 скорости</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- 03 LETTERS -->
+<section class="sec" id="letters" style="--acc:#2D6BE4;--accSoft:rgba(45,107,228,.08)">
+  <div class="wrap">
+    <div class="kick" data-md-skip>Рубрика · персонажи</div>
+    <h2 class="rv">Буквы: жители, работники, характеры</h2>
+    <p class="lead rv">33 уникальных жителя. Цветовой код — из школьной азбуки: гласные красные, согласные синие, знаки и мягкость зелёные. Игрок считывает лингвистику цветом ещё до того, как прочтёт правило.</p>
+    <div class="exhibit rv">
+      <div class="exhibit-head"><svg class="i"><use href="#i-eye"/></svg>Досье алфавита<span class="tag">ПОТРОГАЙ</span></div>
+      <div class="exhibit-body two-col" data-md-skip>
+        <div><div id="alphaGrid" role="group" aria-label="Выбор буквы"></div>
+          <p style="font-size:12.5px;color:var(--ink2);margin-top:12px">× — множитель редкости зарплаты. Кликни букву — откроется досье.</p></div>
+        <div class="dossier sticky-col" id="dossier" aria-live="polite">
+          <div class="dos-top"><div class="dos-tile" id="dosTile"><span>Ё</span></div>
+            <div><h4 id="dosName" style="font-size:20px">Буква Ё</h4><div id="dosType" style="font:700 12px var(--mono);color:var(--ink2)">гласная · уникальная</div></div></div>
+          <dl class="dos-kv">
+            <dt>Редкость</dt><dd id="dosMult">×2,5</dd>
+            <dt>База за слово</dt><dd id="dosBase">5 Т на 1-м уровне</dd>
+            <dt>Характер-архетип</dt><dd id="dosTrait">Борец за справедливость</dd>
+            <dt>Дом</dt><dd id="dosHome">Дом с двумя огоньками на крыше</dd>
+            <dt>Слог-партнёры</dt><dd id="dosPairs">21 совместимая буква</dd>
+          </dl>
+          <div class="dos-quote" id="dosQuote">«Ё моё! Ставьте точки!»</div>
+          <button class="btn gold" id="dosMatch" style="padding:9px 16px;font-size:13.5px"><svg class="i"><use href="#i-heart"/></svg>Примерить в сваты</button>
+        </div>
+      </div>
+    </div>
+    <h3 class="rv"><svg class="i"><use href="#i-token"/></svg>Редкость и множители зарплаты</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Группа</th><th>Буквы</th><th>Множитель</th><th>Логика</th></tr></thead>
+      <tbody>
+        <tr><td>Частые</td><td class="n">О Е А И Н Т</td><td class="n gold">×1,0</td><td>Рабочие лошадки: всегда востребованы, дёшевы</td></tr>
+        <tr><td>Обычные</td><td class="n">С Р В Л К М Д П У Я</td><td class="n gold">×1,2</td><td>Костяк словаря</td></tr>
+        <tr><td>Нечастые</td><td class="n">Ы Ь Г З Б Ч Й Х</td><td class="n gold">×1,5</td><td>Специалисты</td></tr>
+        <tr><td>Редкие</td><td class="n">Ж Ш Ю Ц Щ Э</td><td class="n gold">×2,0</td><td>Звёзды заказов: за ними охотятся</td></tr>
+        <tr><td>Уникальные</td><td class="n">Ф Ъ Ё</td><td class="n gold">×2,5</td><td>Легенды города</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout co-green rv"><b class="lab"><svg class="i"><use href="#i-warn"/></svg>Немые знаки — особая каста</b><p>Ъ и Ь не произносятся, поэтому не могут создать семью (слог без звука не живёт). Зато дают ауре «твёрдость/мягкость»: соседям по слоту +25% к качеству. Ъ — вечный бухгалтер мэрии, Ь — мягкий воспитатель в «Букварике». В День тишины их зарплата удваивается.</p></div>
+    <h3 class="rv"><svg class="i"><use href="#i-pill"/></svg>Потребности (шкалы 0–100)</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Шкала</th><th>Дрейф за день</th><th>Восстановление</th><th>Кризис</th></tr></thead>
+      <tbody>
+        <tr><td><b>Сытость</b></td><td class="n red">−55</td><td>Еда: +15…80 за приём</td><td>При 0: здоровье −10/день, настроение −20</td></tr>
+        <tr><td><b>Энергия</b></td><td class="n red">−45 (смена)</td><td>Сон +60…80 (кровать даёт до +20)</td><td>&lt;15: скорость ×0,6, зевота-«О»</td></tr>
+        <tr><td><b>Настроение</b></td><td>дрейф к 50</td><td>Мебель, парк, семья, премия мэра</td><td>&lt;20: «бунт» — отказ работать 1 день</td></tr>
+        <tr><td><b>Здоровье</b></td><td class="n grn">+3 при сытости и сне</td><td>Больница, витаминки, отпуск в парке</td><td>0 — смерть; болезнь −5/день</td></tr>
+      </tbody>
+    </table></div>
+    <h3 class="rv"><svg class="i"><use href="#i-spark"/></svg>Характеры (случайная черта при рождении, 12 архетипов)</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Черта</th><th>Плюс</th><th>Минус</th></tr></thead>
+      <tbody>
+        <tr><td>Трудоголик</td><td>скорость работы +15%</td><td>энергия тратится +10%</td></tr>
+        <tr><td>Соня</td><td>сон +20%</td><td>опоздания ×1,5</td></tr>
+        <tr><td>Гурман</td><td>эффект еды +20%</td><td>траты на еду +25%</td></tr>
+        <tr><td>Лихач</td><td>транспорт +20% скорости</td><td>риск ДТП ×2</td></tr>
+        <tr><td>Романтик</td><td>созвучие пары +10, сватается сам</td><td>грустит без пары (−настроение)</td></tr>
+        <tr><td>Ворчун</td><td>качество печати +5%</td><td>настроение −5/день</td></tr>
+        <tr><td>Душа компании</td><td>аура +3 настроения соседям</td><td>болтает: скорость −5%</td></tr>
+        <tr><td>Копилка</td><td>траты −15%</td><td>не покупает мебель сам</td></tr>
+        <tr><td>Непоседа</td><td>пешком +25%</td><td>чаще переходит вне зебры</td></tr>
+        <tr><td>Иммунитет</td><td>болезни ×0,5</td><td>—</td></tr>
+        <tr><td>Везунчик</td><td>ДТП ×0,5, лотереи чаще</td><td>—</td></tr>
+        <tr><td>Перфекционист</td><td>качество +10%</td><td>скорость −10%</td></tr>
+      </tbody>
+    </table></div>
+    <h3 class="rv"><svg class="i"><use href="#i-book"/></svg>Квалификация</h3>
+    <p class="rv">Уровень 1–10, +1 слово = +1 XP, порог уровня N — 12×N слов. Разряды: <b>1–2 Стажёр → 3–4 Наборщик → 5–6 Верстальщик → 7–8 Корректор → 9–10 Мастер слова</b>. Каждый уровень даёт +10% к личной базе Ц. Пожилые работают медленнее (×0,7), но дают команде +5% качества — «мудрость литеры».</p>
+  </div>
+</section>
+
+<!-- 04 WORDS -->
+<section class="sec" id="words" style="--acc:#B57F0A;--accSoft:rgba(242,179,44,.12)">
+  <div class="wrap">
+    <div class="kick" data-md-skip>Рубрика · ядро игры</div>
+    <h2 class="rv">Слова и работа: как печатаются деньги</h2>
+    <p class="lead rv">Заказ — это слово со слотами на конвейере. Буквы приходят, встают литерами в печатную форму, станок «вдавливает» их (squash-анимация!), и слово вылетает карточкой. Выплата зависит от длины, редкости букв, структуры слова и настроения команды.</p>
+    <h3 class="rv"><svg class="i"><use href="#i-factory"/></svg>Анатомия заказа</h3>
+    <ul class="list rv">
+      <li>Мэр выбирает заказ из <b>трёх предложений</b>, сгенерированных под состав жителей (реролл — 10 Т). Предложения тянутся из встроенного словаря.</li>
+      <li>Слоты = буквы слова по порядку. Одна буква может занимать несколько слотов только разными экземплярами: «МАМА» требует двух М и двух А — население должно покрывать мультимножество.</li>
+      <li>«Горящие» заказы: дедлайн 2 игровых дня, награда ×1,5, провал — −репутация.</li>
+      <li><b>Ручная вёрстка:</b> игрок сам тащит букв в слоты и ловит ритм станка тапами — до ×1,5 качества. Идл-сборка работает всегда, мини-игра — только бонус.</li>
+      <li>Выплата делится между буквами <b>пропорционально их базе Ц</b>; 20% удерживается в бюджет мэра (§05).</li>
+    </ul>
+    <h3 class="rv"><svg class="i"><use href="#i-token"/></svg>Формула награды</h3>
+    <pre class="formula rv"><span class="c">// база буквы i</span>
+Цᵢ = <span class="g">2</span> × Редкостьᵢ × (1 + 0,1 × (Уровеньᵢ − 1))
+
+<span class="c">// награда за слово (округление до целого)</span>
+Награда = ΣЦᵢ × <span class="b">K_длины</span> × <span class="b">K_качества</span> × <span class="b">K_структуры</span> × <span class="r">K_события</span>
+
+<span class="b">K_длины</span>    = 1 + 0,15 × (L − 2)            <span class="c">// L: 2…15</span>
+<span class="b">K_качества</span> = 0,8 + 0,5 × Настроение/100     <span class="c">// среднее по команде</span>
+<span class="b">K_структуры</span>= 1 + 0,05 × Стечения + 0,15 × [есть Ъ или Ь]
+<span class="r">K_события</span>  = 2 в «Слово дня», иначе 1; семейная пара рядом: ×1,1</pre>
+    <p class="rv"><b>Стечение</b> — любой непрерывный ряд из ≥2 согласных (СЧ и СТ в «СЧАСТЬЕ» — два стеечения). Так фонетическая сложность честно превращается в деньги.</p>
+    <div class="exhibit rv">
+      <div class="exhibit-head"><svg class="i"><use href="#i-token"/></svg>Калькулятор награды — считает по формуле выше<span class="tag">ПОТРОГАЙ</span></div>
+      <div class="exhibit-body" data-md-skip>
+        <div class="calc-in">
+          <input id="wIn" value="СЧАСТЬЕ" maxlength="15" spellcheck="false" aria-label="Слово для расчёта">
+          <button class="wpre" data-w="КОТ">КОТ</button><button class="wpre" data-w="МАМА">МАМА</button><button class="wpre" data-w="МОЛОКО">МОЛОКО</button><button class="wpre" data-w="ДРУЖБА">ДРУЖБА</button><button class="wpre" data-w="ПОДОРОЖНИК">ПОДОРОЖНИК</button><button class="wpre" data-w="ЭНЦИКЛОПЕДИЯ">ЭНЦИКЛОПЕДИЯ</button>
+        </div>
+        <div id="wErr" role="status"></div>
+        <div class="calc-ctrl">
+          <div class="cg">Уровень команды<input type="range" id="wLvl" min="1" max="10" value="1"><output id="wLvlV">1</output></div>
+          <div class="cg">Настроение<input type="range" id="wMood" min="0" max="100" value="80"><output id="wMoodV">80</output></div>
+          <label class="sw"><input type="checkbox" id="wDay"><i></i>Слово дня ×2</label>
+          <label class="sw"><input type="checkbox" id="wFam"><i></i>Семейная пара рядом ×1,1</label>
+        </div>
+        <div class="tbl-wrap" style="margin:0"><table class="tbl" style="min-width:420px">
+          <thead><tr><th>Буква</th><th>Тип</th><th>Редкость</th><th>Цᵢ</th></tr></thead>
+          <tbody id="wRows"></tbody>
+        </table></div>
+        <div id="wMeta"></div>
+        <div class="calc-total"><b id="wTotal">45</b><span>токенов за слово ·宏观 выплата команде до налога мэра</span></div>
+      </div>
+    </div>
+    <h3 class="rv"><svg class="i"><use href="#i-book"/></svg>Эталонные примеры (уровень 1, настроение 80, без событий)</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Слово</th><th>L</th><th>ΣЦ</th><th>K длины</th><th>K структуры</th><th>Награда</th></tr></thead>
+      <tbody>
+        <tr><td class="n">КОТ</td><td class="n">3</td><td class="n">6,4</td><td class="n">1,15</td><td class="n">1,00</td><td class="n gold">9 Т</td></tr>
+        <tr><td class="n">МАМА</td><td class="n">4</td><td class="n">8,8</td><td class="n">1,30</td><td class="n">1,00</td><td class="n gold">14 Т</td></tr>
+        <tr><td class="n">МОЛОКО</td><td class="n">6</td><td class="n">13,2</td><td class="n">1,60</td><td class="n">1,00</td><td class="n gold">25 Т</td></tr>
+        <tr><td class="n">ДРУЖБА</td><td class="n">6</td><td class="n">15,2</td><td class="n">1,60</td><td class="n">1,05 (ДР)</td><td class="n gold">31 Т</td></tr>
+        <tr><td class="n">СЧАСТЬЕ</td><td class="n">7</td><td class="n">17,2</td><td class="n">1,75</td><td class="n">1,25 (СЧ, СТ, Ь)</td><td class="n gold">45 Т</td></tr>
+        <tr><td class="n">ПОДОРОЖНИК</td><td class="n">10</td><td class="n">25,6</td><td class="n">2,20</td><td class="n">1,05 (ЖН)</td><td class="n gold">71 Т</td></tr>
+        <tr><td class="n">ЭНЦИКЛОПЕДИЯ</td><td class="n">12</td><td class="n">32,0</td><td class="n">2,50</td><td class="n">1,05 (НЦ)</td><td class="n gold">101 Т</td></tr>
+      </tbody>
+    </table></div>
+    <h3 class="rv"><svg class="i"><use href="#i-book"/></svg>Словарь и коллекция</h3>
+    <ul class="list rv">
+      <li><b>Словарь v1:</b> ~5 000 существительных (нарицательные, им. падеж, ед. число), тегированных длиной и частотностью. Фильтры: без имён собственных, обсценной лексики и политики; ручной пре-модерейт топ-500.</li>
+      <li><b>«Словарь города»</b> — коллекция всех собранных слов: карточка хранит дату, команду, качество и выплату. 10 повторов одного слова — золотая карточка и +1% к его награде навсегда.</li>
+      <li>Прогресс словаря открывает производства: 25 → Фабрика, 60 → Редакция, 120 → Комбинат, 250 → Академия. Поздняя игра: «Вольная тема» — мэр вводит любое словарное слово сам.</li>
+      <li><b>Слово дня</b> — глобальный заказ ×2, обновляется в 06:00; печатается на Доске почёта.</li>
+    </ul>
+    <div class="callout co-red rv"><b class="lab"><svg class="i"><use href="#i-warn"/></svg>Забастовка гласных</b><p>Если средняя зарплата гласных 3 дня ниже, чем у согласных, гласные выходят на площадь с плакатами «Без нас нет слова!» и не работают. Слова физически не собираются. Это и балансировочный клапан, и урок: гласная — душа слога.</p></div>
+    <div class="quote rv"><p>«Комбинат отчитался: слово „ЭНЦИКЛОПЕДИЯ“ собрано за одну смену. Буква Э плакала от счастья, буква Ё потребовала премию за участие, хотя её в слове не было».</p></div>
+  </div>
+</section>
+
+<!-- 05 ECONOMY -->
+<section class="sec" id="economy" style="--acc:#2FA65A;--accSoft:rgba(47,166,90,.09)">
+  <div class="wrap">
+    <div class="kick" data-md-skip>Рубрика · токены</div>
+    <h2 class="rv">Экономика: два контура токенов</h2>
+    <p class="lead rv">Валюта одна — токен (Т), золотая литера-гексагон. Но контура два: буквы зарабатывают и потребляют, мэр живёт с налогов, аренды и маржи. Игрок не «копит вообще» — он строит машину, в которой буквам выгодно жить.</p>
+    <div class="grid2">
+      <div class="card rv"><span class="num">Контур букв</span><h4>Зарплата → жизнь</h4>
+        <p style="margin-bottom:8px"><b>Приход:</b> 80% награды за слово (≈3–5 Т за слово на 1-м уровне), премии мэра, наследство.</p>
+        <p><b>Расход:</b> еда, аренда жилья мэру, транспорт и его ремонт, мебель, страховка, свадьба и ребёнок (семейный сундук), лечение.</p></div>
+      <div class="card rv" style="--d:100ms"><span class="num">Контур мэра</span><h4>Налоги → стройка</h4>
+        <p style="margin-bottom:8px"><b>Приход:</b> налог 20% с каждого слова, аренда 1–12 Т/день с буквы, маржа магазинов 30%, пошлина ЗАГСа 50%, старт 200 Т.</p>
+        <p><b>Расход:</b> здания, дороги, светофоры, закупки еды оптом, премии, рероллы, похороны.</p></div>
+    </div>
+    <h3 class="rv"><svg class="i"><use href="#i-pill"/></svg>Еда (расходники; портится за 3 дня, холодильник продлевает до 7)</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Товар</th><th>Цена</th><th>Сытость</th><th>Бонус</th></tr></thead>
+      <tbody>
+        <tr><td><span class="bl c">Б</span>Булка «Б»</td><td class="n gold">3 Т</td><td class="n">+35</td><td>—</td></tr>
+        <tr><td><span class="bl c">К</span>Каша «Кашевар»</td><td class="n gold">4 Т</td><td class="n">+40</td><td>энергия +5</td></tr>
+        <tr><td><span class="bl c">Щ</span>Суп «Щи»</td><td class="n gold">7 Т</td><td class="n">+55</td><td>настроение +5</td></tr>
+        <tr><td><span class="bl c">К</span>Компот</td><td class="n gold">2 Т</td><td class="n">+15</td><td>настроение +3</td></tr>
+        <tr><td><span class="bl c">Н</span>Торт «Наполеон-Н»</td><td class="n gold">15 Т</td><td class="n">+80</td><td>настроение +15, праздник дома</td></tr>
+        <tr><td><span class="bl v">С</span>Витаминка «С»</td><td class="n gold">6 Т</td><td class="n">+5</td><td>здоровье +12</td></tr>
+      </tbody>
+    </table></div>
+    <h3 class="rv"><svg class="i"><use href="#i-home"/></svg>Мебель (покупает буква в свой дом; износ 10%/день использования, ремонт — 30% цены)</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Предмет</th><th>Цена</th><th>Эффект</th></tr></thead>
+      <tbody>
+        <tr><td><span class="bl c">К</span>Кровать «К»</td><td class="n gold">40 Т</td><td>сон +10…20 энергии по тиру</td></tr>
+        <tr><td><span class="bl c">С</span>Стол</td><td class="n gold">30 Т</td><td>эффект домашней еды +10%</td></tr>
+        <tr><td><span class="bl c">Д</span>Диван «Д»</td><td class="n gold">60 Т</td><td>настроение дома +6/вечер</td></tr>
+        <tr><td><span class="bl c">К</span>Ковёр</td><td class="n gold">90 Т</td><td>уют: здоровье +1/день</td></tr>
+        <tr><td><span class="bl c">Т</span>Телевизор «ТБ»</td><td class="n gold">120 Т</td><td>настроение +15/вечер, смотрит новости о себе</td></tr>
+        <tr><td><span class="bl c">Х</span>Холодильник «Х»</td><td class="n gold">140 Т</td><td>еда хранится 7 дней</td></tr>
+        <tr><td><span class="bl c">Р</span>Рояль «Р»</td><td class="n gold">300 Т</td><td>культура: дети +10% одарённости, концерты во дворе</td></tr>
+      </tbody>
+    </table></div>
+    <p class="rv">Сет «Полный уют» (кровать+стол+диван+ковёр): восстановление дома ×1,1. Мебель видна в окошках домов — витрина достатка.</p>
+    <h3 class="rv"><svg class="i"><use href="#i-car"/></svg>Транспорт (износ, ремонт; ДТП ломает транспорт полностью)</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Транспорт</th><th>Цена</th><th>Скорость</th><th>Множитель риска ДТП</th></tr></thead>
+      <tbody>
+        <tr><td>Пешком</td><td class="n gold">0 Т</td><td class="n">×1,0</td><td class="n">×1,0 (база 0,05%/переход)</td></tr>
+        <tr><td><span class="bl c">С</span>Самокат «С»</td><td class="n gold">60 Т</td><td class="n">×1,6</td><td class="n">×1,2</td></tr>
+        <tr><td><span class="bl c">В</span>Велосипед</td><td class="n gold">100 Т</td><td class="n">×2,0</td><td class="n">×1,5</td></tr>
+        <tr><td><span class="bl c">А</span>Автобусный абонемент</td><td class="n gold">150 Т</td><td class="n">×1,8 + ожидание</td><td class="n">×0,4</td></tr>
+        <tr><td><span class="bl c">Ж</span>Автомобиль «Жук-Ж»</td><td class="n gold">400 Т</td><td class="n">×3,0</td><td class="n red">×2,2</td></tr>
+        <tr><td><span class="bl v">Ё</span>Лимузин «Ё-мобиль»</td><td class="n gold">1 500 Т</td><td class="n">×3,5</td><td class="n grn">×0,8, престиж +настроение</td></tr>
+      </tbody>
+    </table></div>
+    <h3 class="rv"><svg class="i"><use href="#i-home"/></svg>Жильё (строит мэр, буквы платят аренду)</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Тир</th><th>Цена стройки</th><th>Мест</th><th>Аренда/букву/день</th><th>Настроение</th></tr></thead>
+      <tbody>
+        <tr><td>Общага «Ы»</td><td class="n gold">старт</td><td class="n">8</td><td class="n">1 Т</td><td class="n red">−4</td></tr>
+        <tr><td>Комната</td><td class="n gold">150 Т</td><td class="n">2</td><td class="n">2 Т</td><td class="n">+2</td></tr>
+        <tr><td>Квартира в «Пятибуквке»</td><td class="n gold">400 Т</td><td class="n">3</td><td class="n">4 Т</td><td class="n">+4</td></tr>
+        <tr><td>Домик-литера</td><td class="n gold">900 Т</td><td class="n">4</td><td class="n">6 Т</td><td class="n">+6, сад</td></tr>
+        <tr><td>Коттедж</td><td class="n gold">2 000 Т</td><td class="n">5</td><td class="n">9 Т</td><td class="n">+8, гараж</td></tr>
+        <tr><td>Пентхаус «Ю»</td><td class="n gold">5 000 Т</td><td class="n">6</td><td class="n">12 Т</td><td class="n">+12, вид на город</td></tr>
+      </tbody>
+    </table></div>
+    <h3 class="rv"><svg class="i"><use href="#i-heart"/></svg>Услуги и пошлины</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Услуга</th><th>Цена</th><th>Кому платят</th></tr></thead>
+      <tbody>
+        <tr><td>Лечение в больнице</td><td class="n gold">30–120 Т</td><td>город (мэр)</td></tr>
+        <tr><td>Страховка «ОСАГО-Ъ»</td><td class="n gold">5 Т/день</td><td>мэр; покрывает ремонт при ДТП</td></tr>
+        <tr><td>Свадьба в ЗАГСе</td><td class="n gold">80 × средняя редкость пары</td><td>50% пошлина мэру</td></tr>
+        <tr><td>Ребёнок в Детском доме</td><td class="n gold">150 Т</td><td>семейный сундук → город</td></tr>
+        <tr><td>Лицензия «Цыган» (союз Ц+Ы)</td><td class="n gold">500 Т</td><td>мэр, единственное исключение из правил</td></tr>
+        <tr><td>Реролл заказа</td><td class="n gold">10 Т</td><td>мэр сам себе</td></tr>
+        <tr><td>Похороны</td><td class="n gold">20 Т</td><td>город; бесплатно — но −настроение города</td></tr>
+        <tr><td>Премия букве</td><td class="n gold">любая</td><td>мэр → буква: +настроение, +лояльность</td></tr>
+      </tbody>
+    </table></div>
+    <h3 class="rv"><svg class="i"><use href="#i-token"/></svg>Дневной бюджет взрослой буквы (уровень 1, 5 слов/день)</h3>
+    <div class="statrow rv" data-md-skip>
+      <div class="statbox"><b>+16 Т</b><span>зарплата (80% от ~4 Т × 5)</span></div>
+      <div class="statbox"><b>−7 Т</b><span>еда (1,5 приёма)</span></div>
+      <div class="statbox"><b>−4 Т</b><span>аренда квартиры</span></div>
+      <div class="statbox"><b>−2 Т</b><span>транспорт, мелочи</span></div>
+      <div class="statbox"><b>+3 Т</b><span>чистыми → в сундук</span></div>
+    </div>
+    <p class="rv">Целевой пейсинг при активной игре: первая квартира — день 4–5, ЗАГС — день 6–8, свадьба — день 8–12 (пара копит вместе + премии), первый ребёнок — день 12–16, коттедж — день 25–30. Ручки тюнинга: налог, аренда, частота «слова дня», цены еды.</p>
+    <div class="callout co-gold rv"><b class="lab"><svg class="i"><use href="#i-warn"/></svg>Анти-эксплойты</b><p>Спам коротких слов душит K_длины и усталость (энергия); еда портится; мебель и транспорт изнашиваются; заказы требуют реальных букв в наличии; реролл платный; офлайн-доход ограничен 8 часами и сном жителей. Инфляция гасится стоками, растущими с населением.</p></div>
+  </div>
+</section>
+
+<!-- 06 FAMILY -->
+<section class="sec" id="family" style="--acc:#D6408F;--accSoft:rgba(214,64,143,.09)">
+  <div class="wrap">
+    <div class="kick" data-md-skip>Рубрика · слоги и судьбы</div>
+    <h2 class="rv">Семья: жениться можно только на слоге</h2>
+    <p class="lead rv">Центральное правило мира: пара может создать семью, только если две буквы образуют допустимый русский слог — согласная + гласная в любом порядке. М+А — «МА», судьба. Ш+Ы — «шы», ЗАГС отказывает. Это головоломка, лингвистика и мелодрама в одном флаконе.</p>
+    <div class="callout co-mag rv"><b class="lab"><svg class="i"><use href="#i-heart"/></svg>Правило слога (канон)</b><p>Семья = слог. Допустимы союзы <b>СГ</b> («МА» — идеально) и <b>ГС</b> («АМ» — закрытый слог, тоже живёт). Две гласные — «это уже песня, а не слог». Две согласные — «без гласной души слог не живёт». Ъ и Ь — вечные холостяки с аурой. Орфографические запреты (жи-ши, ча-ща, чу-щу, цы) действуют как законы физики.</p></div>
+    <div class="exhibit rv">
+      <div class="exhibit-head"><svg class="i"><use href="#i-heart"/></svg>ЗАГС «Слоговой Союз» — проверка пары<span class="tag">ПОТРОГАЙ</span></div>
+      <div class="exhibit-body" data-md-skip>
+        <div class="pair-row">
+          <select id="selA" aria-label="Первая буква"></select>
+          <span class="pair-plus">+</span>
+          <select id="selB" aria-label="Вторая буква"></select>
+          <button class="ibtn" id="swap" title="Поменять местами"><svg class="i"><use href="#i-swap"/></svg></button>
+          <button class="chipbtn" id="randPair"><svg class="i"><use href="#i-dice"/></svg>Сватнуть наугад</button>
+        </div>
+        <div class="pair-row" style="margin-bottom:18px">
+          <button class="ppre" data-pair="МА">МА</button><button class="ppre" data-pair="АМ">АМ</button><button class="ppre" data-pair="ШЫ">ШЫ</button><button class="ppre" data-pair="ЦЫ">ЦЫ</button><button class="ppre" data-pair="ЧА">ЧА</button><button class="ppre" data-pair="АУ">АУ</button><button class="ppre" data-pair="КД">КД</button><button class="ppre" data-pair="ЬА">ЬА</button>
+        </div>
+        <div id="pairCard" aria-live="polite">
+          <div class="p-verdict"><span class="big" id="pSlog">МА</span><span class="vd" id="pVerdict">Слог звучит! Свадьба разрешена</span></div>
+          <p id="pRule">Согласная + гласная — открытый слог. Классика Буквограда.</p>
+          <div style="font:700 11.5px var(--mono);color:var(--ink2)">СОЗВУЧИЕ <span id="pHarmV">95</span>/100</div>
+          <div class="harm"><i id="pHarm"></i></div>
+          <div class="p-facts"><span>Свадьба: <b id="pCost">80 Т</b></span><span id="pBonus">порядок СГ: +15</span></div>
+          <div id="pKids"></div>
+        </div>
+      </div>
+    </div>
+    <h3 class="rv"><svg class="i"><use href="#i-warn"/></svg>Таблица запретов (действует в обе стороны: ШЫ и ЫШ)</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Запрет</th><th>Пары</th><th>Ответ ЗАГСа</th></tr></thead>
+      <tbody>
+        <tr><td class="n red">ЖИ-ШИ</td><td class="n">Ж/Ш + Ы</td><td>«Жи-ши пиши с И! Ступайте к И»</td></tr>
+        <tr><td class="n red">ЧА-ЩА</td><td class="n">Ч/Щ + Я</td><td>«Ча-ща пиши с А»</td></tr>
+        <tr><td class="n red">ЧУ-ЩУ</td><td class="n">Ч/Щ + Ю</td><td>«Чу-щу пиши с У»</td></tr>
+        <tr><td class="n red">ЖИ-ШИ-Я/Ю</td><td class="n">Ж/Ш/Ц + Я/Ю</td><td>«После шипящих так не пишут»</td></tr>
+        <tr><td class="n">ЦЫ</td><td class="n">Ц + Ы</td><td>Только по лицензии «Цыган» (500 Т). «Цыган на цыпочках цыкнул цыплёнку» — легальное исключение</td></tr>
+        <tr><td class="n">ЙЫ</td><td class="n">Й + Ы</td><td>«Йот не дружит с Ы, они ссорятся ещё в букваре»</td></tr>
+        <tr><td class="n red">ГГ / СС / знаки</td><td class="n">АУ, КД, ЬА…</td><td>Отказ по канону слога</td></tr>
+      </tbody>
+    </table></div>
+    <h3 class="rv"><svg class="i"><use href="#i-heart"/></svg>Сватовство и свадьба</h3>
+    <ul class="list rv">
+      <li>В интерфейсе ЗАГСа при выборе буквы <b>подсвечиваются все допустимые партнёры</b> (таблица 33×33) — правило учится глазами, без зубрёжки.</li>
+      <li><b>Созвучие</b> (0–100): база 70, +15 за порядок СГ, +10 за мягкость (Ч/Щ/Й или гласные Е/Ё/И/Ю/Я). Созвучие ≥85 — скидка на свадьбу 20% и +10% одарённости детям.</li>
+      <li>Стоимость свадьбы = 80 × средняя редкость пары.Ceremony: арка из запятых, гости-буквы кидают конфетти-точки, диктор произносит слог по звукам: «М-м-м… А-а-а… МА!».</li>
+      <li>Семья получает <b>фамилию-слог</b> («Семья МА»), общий сундук (автооткладывание 50% чистого дохода) и +6 настроения обоим.</li>
+      <li>Требование жилья: ≥2 свободных мест в доме. Без них ЗАГС вежливо отказывает: «Слог есть — гнезда нет».</li>
+      <li>Романтики сватаются сами; мэр может ускорить свиданием в парке (5 Т, +созвучие на день).</li>
+    </ul>
+    <h3 class="rv"><svg class="i"><use href="#i-egg"/></svg>Детский дом «Аист»: рождение буквы-дитя</h3>
+    <ul class="list rv">
+      <li>Семья подаёт заявку и платит <b>150 Т</b> из сундука. Очередь — 1 игровой день, в доме два яйца-«Я» одновременно.</li>
+      <li>Анимация рождения: аист-«А» приносит яйцо на капустную грядку Детского дома, яйцо трескается — оттуда выпрыгивает буква-дитя с первыми глазами-точками. Конфетти из мягких знаков.</li>
+      <li>Нужно <b>+1 свободное место</b> в жилье семьи, иначе заявка ждёт: «Тесно!».</li>
+      <li>Дитя живёт с родителями, ест на 40% меньше, ходит в школу «Букварик» и не работает до взросления (3 дня — дитя, 3 дня — подросток).</li>
+    </ul>
+    <h3 class="rv"><svg class="i"><use href="#i-spark"/></svg>Генетика слогов: кто родится</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Шанс</th><th>Ребёнок</th><th>Пример: семья МА</th></tr></thead>
+      <tbody>
+        <tr><td class="n gold">40%</td><td>Родитель-согласная</td><td class="n">М</td></tr>
+        <tr><td class="n gold">40%</td><td>Родитель-гласная</td><td class="n">А</td></tr>
+        <tr><td class="n gold">15%</td><td>Фонетическая мутация случайного родителя (карта ниже)</td><td class="n">Н (М↔Н) или Я (А↔Я)</td></tr>
+        <tr><td class="n gold">5%</td><td>Вундеркинд: случайная редкая (Ф Щ Э Ю Я Й Ё), старт с одарённостью +20%</td><td class="n">★ Ё!</td></tr>
+      </tbody>
+    </table></div>
+    <p class="rv"><b>Карта мутаций (парные по звонкости/йотации):</b> <span class="mono" style="font-size:13.5px">Б↔П · В↔Ф · Г↔К · Д↔Т · Ж↔Ш · З↔С · М↔Н · Л↔Р · Х↔Г · Ц↔Ч · Щ↔Ш · Й↔И · А↔Я · О↔Ё · У↔Ю · Э↔Е · Ы↔И</span>. Ё рождается чаще у пар с О/Е — город тихо исправляет историческую несправедливость.</p>
+    <p class="rv">Ребёнок наследует одну черту характера случайного родителя (20% — мутация черты) и стартовую одарённость от созвучия. Выросшая буква получает профессию и может съехать — спрос на жильё растёт вместе с поколениями. Развод (P2): если пара 10 дней без ребёнка и настроение обоих &lt;30 — ссора, слог-фамилия распадается.</p>
+    <div class="quote rv"><p>«Сенсация в Слоговом квартале: у семьи ЦЫ (по лицензии!) родился Щ. Аист развёл крыльями: „Генетика-с“. Буква Ё уже пишет петицию о признании Щ почётным цыплёнком».</p></div>
+  </div>
+</section>
+
+<!-- 07 LIFE -->
+<section class="sec" id="life" style="--acc:#E8452C;--accSoft:rgba(232,69,44,.08)">
+  <div class="wrap">
+    <div class="kick" data-md-skip>Рубрика · биографии</div>
+    <h2 class="rv">Жизнь и смерть буквы</h2>
+    <p class="lead rv">Буквы рождаются, растут, работают, стареют и уходят — от старости, в ДТП или от болезни. Смерть в Буквограде мультяшная, но настоящая: буква превращается в звёздочку и улетает, а город помнит её лучшим словом.</p>
+    <div class="exhibit rv">
+      <div class="exhibit-head"><svg class="i"><use href="#i-star"/></svg>Симулятор судьбы — одна жизнь по правилам документа<span class="tag">ПОТРОГАЙ</span></div>
+      <div class="exhibit-body" data-md-skip>
+        <button class="btn gold" id="lifeBtn"><svg class="i"><use href="#i-dice"/></svg>Прожить жизнь</button>
+        <div id="lifeLog" aria-live="polite"></div>
+        <div id="lifeCard"><div id="lcTile">Б</div><div id="lcStats"></div></div>
+      </div>
+    </div>
+    <h3 class="rv"><svg class="i"><use href="#i-sun"/></svg>Стадии жизни (игровые дни)</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Стадия</th><th>Дни</th><th>Поведение</th></tr></thead>
+      <tbody>
+        <tr><td><b>Дитя</b></td><td class="n">0–2</td><td>Дома и во дворе Детского дома, ест −40%, играет в «слоги-салочки»</td></tr>
+        <tr><td><b>Подросток</b></td><td class="n">3–5</td><td>Школа «Букварик»: скорость обучения ×1,5, первые краши на совместимые буквы</td></tr>
+        <tr><td><b>Взрослая</b></td><td class="n">6–45</td><td>Работа, семья, покупки; пик формы 15–35</td></tr>
+        <tr><td><b>Пожилая</b></td><td class="n">46–55</td><td>Скорость ×0,7, качество команде +5%; может уйти на пенсию (парк, голуби-«Г»)</td></tr>
+        <tr><td><b>Старость</b></td><td class="n">50+</td><td>Шанс ухода растёт: 2%/день в 50 → 25%/день к 60; в 65 — гарантированно</td></tr>
+      </tbody>
+    </table></div>
+    <h3 class="rv"><svg class="i"><use href="#i-car"/></svg>ДТП: формула риска на каждом пересечении дороги</h3>
+    <pre class="formula rv">Риск = База × Транспорт × Погода × Характер × Инфраструктура
+<span class="c">// База: пешком 0,05%, на транспорте 0,15% за переход</span>
+Погода: ливень ×1,6 · Характер «Лихач» ×2 · «Везунчик» ×0,5
+Инфраструктура: светофор ×0,5 · зебра ×0,7 · лежачий Ь ×0,6 · фонарь ночью ×0,9
+
+<span class="r">Исход ДТП:</span> 70% лёгкое (здоровье −30, ремонт) · 25% тяжёлое (больница, −60) · <span class="r">5% смерть</span></pre>
+    <p class="rv">Страховка «ОСАГО-Ъ» (5 Т/день) покрывает ремонт и лечение. Мультяшная подача: «Жук» крутится на месте, из-под капота вылетают звёздочки, буква садится на асфальт с табличкой «Ой!». Свидетели-буквы ахают слогами. Скриптовое первое ДТП в онбординге — всегда лёгкое.</p>
+    <h3 class="rv"><svg class="i"><use href="#i-pill"/></svg>Болезни</h3>
+    <ul class="list rv">
+      <li>Базовый шанс 1%/день; осенью ×2, при сытости &lt;30 ×2, рядом с болеющим ×3. Болезнь: здоровье −5/день, настроение −10, работа ×0,6, буква чихает «Ф-ф-ф!».</li>
+      <li>Лечение в больнице: 30–120 Т, 1–2 дня. Без лечения здоровье тает до 0 — смерть от болезни. Иммунитет ×0,5 к заражению.</li>
+      <li>Событие «Грипп-Ф»: эпидемия по контактам; мэр объявляет карантин (работа −50%, заражение ×0,3) или закупает витаминки оптом.</li>
+    </ul>
+    <h3 class="rv"><svg class="i"><use href="#i-star"/></svg>Смерть, память и наследство</h3>
+    <ul class="list rv">
+      <li><b>Анимация ухода:</b> буква светится, поднимается звёздочкой в небо; окружающие снимают кепки-бревисы. Никаких крестов и мрака — тон «Смешариков», не кладбищенский реализм.</li>
+      <li><b>Похороны:</b> процессия по главной улице с венками-запятыми (20 Т, или бесплатно с −настроения города). Надгробие-литера на Аллее Памяти: буква, годы, <b>эпитафия — лучшее собранное слово</b>.</li>
+      <li><b>Наследство:</b> 50% кошелька и права на жильё — семье; без семьи — городу. Мебель остаётся в доме.</li>
+      <li><b>Призраки (редко и по-доброму):</b> ушедшая буква раз в месяц навещает семью полупрозрачным силуэтом — +10 настроения, свеча в окне. Игрок может поставить скамейку имени буквы.</li>
+      <li><b>Детский режим</b> (настройка): смерти только от старости, ДТП всегда лёгкие, уход показан как «переезд в Алфавитный рай». Рейтинг 12+ сохраняется.</li>
+    </ul>
+    <div class="callout co-blue rv"><b class="lab"><svg class="i"><use href="#i-eye"/></svg>Зачем игре смерти</b><p>Смерти создают ставки (страховки, светофоры, больницы — осмысленные траты), смену поколений (спрос на жильё и школы) и эмоциональные истории («лучшее слово деда О было МОЛОКО»). Частота настроена так, чтобы первая потеря случалась не раньше ~2 часов игры, если мэр не лихачит.</p></div>
+  </div>
+</section>
+
+<!-- 08 ART -->
+<section class="sec" id="art" style="--acc:#D6408F;--accSoft:rgba(242,179,44,.10)">
+  <div class="wrap">
+    <div class="kick" data-md-skip>Рубрика · визуал</div>
+    <h2 class="rv">Арт-дирекция: пластилиновая типографика</h2>
+    <p class="lead rv">Мультяшный WebGL: пухлые 3D-глифы с глазами-точками и ножками-палочками, сочные цвета чернил и бумаги, толстые контуры, мягкие blob-тени, squash&stretch во всём. Город должен выглядеть как игрушка, которую хочется потрогать — макет в шапке документа сделан в этом же ключе.</p>
+    <h3 class="rv"><svg class="i"><use href="#i-spark"/></svg>Палитра «Чернила и бумага» (клик — скопировать HEX)</h3>
+    <div id="palette" data-md-skip></div>
+    <p class="rv">Код азбуки священен: <b style="color:var(--red-d)">гласные — красные</b>, <b style="color:var(--blue)">согласные — синие</b>, <b style="color:var(--green)">мягкость и знаки — зелёные</b>. Золото — только токены и награды. Маджента — только семья. Бирюза — только транспорт. Семантика: успех зелёный, предупреждение янтарный, опасность красный, информация синий. Дальтоник-режим дублирует тип буквы значком (●/■/▲), не только цветом.</p>
+    <h3 class="rv"><svg class="i"><use href="#i-eye"/></svg>Паспорт персонажа</h3>
+    <div class="grid2">
+      <div class="card rv" data-md-skip style="text-align:center">
+        <svg viewBox="0 0 300 240" style="max-width:320px">
+          <rect x="95" y="40" width="110" height="130" rx="26" fill="#2D6BE4" stroke="#2A2F5B" stroke-width="4"/>
+          <circle cx="128" cy="78" r="10" fill="#fff" stroke="#2A2F5B" stroke-width="3"/><circle cx="131" cy="80" r="4" fill="#2A2F5B"/>
+          <circle cx="172" cy="78" r="10" fill="#fff" stroke="#2A2F5B" stroke-width="3"/><circle cx="175" cy="80" r="4" fill="#2A2F5B"/>
+          <text x="150" y="152" font-family="Unbounded,Arial" font-size="64" font-weight="900" fill="#fff" text-anchor="middle">Б</text>
+          <rect x="112" y="170" width="14" height="26" rx="7" fill="#2A2F5B"/><rect x="174" y="170" width="14" height="26" rx="7" fill="#2A2F5B"/>
+          <ellipse cx="119" cy="200" rx="16" ry="7" fill="#E8452C" stroke="#2A2F5B" stroke-width="3"/><ellipse cx="181" cy="200" rx="16" ry="7" fill="#E8452C" stroke="#2A2F5B" stroke-width="3"/>
+          <ellipse cx="150" cy="216" rx="70" ry="10" fill="#2A2F5B" opacity=".14"/>
+          <g font-family="JetBrains Mono,monospace" font-size="11" fill="#565B85">
+            <path d="M128 66 L60 30" stroke="#C23318" stroke-width="2" stroke-dasharray="4 3"/><text x="8" y="26">глаза-точки, блик</text>
+            <path d="M205 100 L252 70" stroke="#C23318" stroke-width="2" stroke-dasharray="4 3"/><text x="212" y="62">глиф = тело</text>
+            <path d="M188 196 L250 180" stroke="#C23318" stroke-width="2" stroke-dasharray="4 3"/><text x="222" y="172">ботинки-«О»</text>
+            <path d="M118 186 L52 196" stroke="#C23318" stroke-width="2" stroke-dasharray="4 3"/><text x="6" y="212">ножки-палочки</text>
+          </g>
+        </svg>
+        <p style="font-size:13px">Буква Б: extruded-глиф с bevel, toon-шейдер в 3 тона, inverted-hull контур 2 px.</p>
+      </div>
+      <div class="card rv" style="--d:100ms" data-md-skip>
+        <h4>Особые приметы</h4>
+        <ul class="list" style="font-size:14px">
+          <li><b>Ё</b> — две точки-серёжки, вечно возмущённые брови.</li>
+          <li><b>Й</b> — кепка-бревис, носит её козырьком назад.</li>
+          <li><b>Ш</b> — три зуба-трубы, из них идёт дым-«ш-ш-ш».</li>
+          <li><b>Щ</b> — как Ш, но с хвостиком-верандой, щекочет при клике.</li>
+          <li><b>Ъ и Ь</b> — пузатые, без рта: молчат выразительно.</li>
+          <li><b>О</b> — катается, а не ходит; <b>У</b> — прыгает на одной ноге.</li>
+        </ul>
+        <p style="font-size:13.5px;color:var(--ink2)">Дома-литеры: дом А — шалаш, О — колобок, Ш — три трубы, Ю — дом с круглой верандой. Апгрейд тира достраивает этажи прямо на глазах.</p>
+      </div>
+    </div>
+    <h3 class="rv"><svg class="i"><use href="#i-play"/></svg>Анимационные принципы (живые демо)</h3>
+    <div class="bounce-demo rv" data-md-skip>
+      <div><div class="bd b1">А</div><div class="bd-cap">squash & stretch</div></div>
+      <div><div class="bd b2">Й</div><div class="bd-cap">anticipation</div></div>
+      <div><div class="bd b3">Щ</div><div class="bd-cap">follow-through</div></div>
+      <p style="font-size:13.5px;color:var(--ink2);max-width:38ch;margin:0">Ходьба — подпрыгивание с приплюсом; работа — буква «вдавливается» в слот, как литера в печатную форму; сборка слова — станок чихает конфетти из запятых; дождь — зонтики-«Г» раскрываются над идущими.</p>
+    </div>
+    <h3 class="rv"><svg class="i"><use href="#i-sun"/></svg>Colorscript суток</h3>
+    <div class="colorscript rv" data-md-skip>
+      <div class="cs" style="background:linear-gradient(180deg,#F7C98B,#F6EFE3)"><span>рассвет 06</span></div>
+      <div class="cs" style="background:linear-gradient(180deg,#BFE3F7,#8FCB7B)"><span>день 12</span></div>
+      <div class="cs" style="background:linear-gradient(180deg,#F2955C,#D6408F)"><span>закат 19</span></div>
+      <div class="cs" style="background:linear-gradient(180deg,#171B3A,#2A2F5B)"><span>ночь 00</span></div>
+      <div class="cs" style="background:linear-gradient(180deg,#8C9BB8,#565B85)"><span>ливень</span></div>
+      <div class="cs" style="background:linear-gradient(180deg,#F2B32C,#E8452C)"><span>парад</span></div>
+    </div>
+    <h3 class="rv"><svg class="i"><use href="#i-book"/></svg>Типографика</h3>
+    <div class="grid3">
+      <div class="fontspec rv" data-md-skip><div class="big" style="font-family:var(--disp);font-weight:900">Аа Бб Ёё Жж</div><small>Unbounded 900 — заголовки, глифы, бренд. Характерный, широкий, «пластилиновый».</small></div>
+      <div class="fontspec rv" style="--d:80ms" data-md-skip><div class="big" style="font-family:var(--body);font-weight:800">Аа Бб Ёё Жж</div><small>Manrope 400–800 — интерфейс и тексты. Тёплый гротеск с идеальной кириллицей.</small></div>
+      <div class="fontspec rv" style="--d:160ms" data-md-skip><div class="big" style="font-family:var(--mono);font-weight:700">Аа 0123 ×2,5</div><small>JetBrains Mono — числа, формулы, таблицы баланса. Читаемая моноширинная кириллица.</small></div>
+    </div>
+    <p class="rv"><b>Камера:</b> ортографическая изометрия 2:1 (элеация 35,26°, азимут 45°), три ступени зума, лёгкий tilt-shift по краям — «игрушечный город». <b>VFX-лист:</b> конфетти-запятые, фонтан токенов, дым-«Ш», лужи-блики, звёздочки ДТП, следы шин, светлячки-«i» ночью, лепестки в парке, снежинки-«✳» зимой.</p>
+  </div>
+</section>
+
+<!-- 09 AUDIO -->
+<section class="sec" id="audio" style="--acc:#2D6BE4;--accSoft:rgba(45,107,228,.08)">
+  <div class="wrap">
+    <div class="kick" data-md-skip>Рубрика · звук</div>
+    <h2 class="rv">Звук: город, который говорит фонемами</h2>
+    <p class="lead rv">Главная звуковая идея: каждая буква «говорит» своим звуком — М мычит, Ш шуршит, Р рычит. Сборка слова озвучивается по слогам диктором-станком: «М-м… О-о… Л-л… МОЛОКО!». Игрок слышит фонетику, которую видит.</p>
+    <div class="two-col">
+      <div>
+        <h3 class="rv"><svg class="i"><use href="#i-snd"/></svg>Музыка (адаптивные слои, WebAudio)</h3>
+        <ul class="list rv">
+          <li><b>День:</b> игривая маримба + пиццикато, 96 BPM; слой перкуссии включается при &gt;10 работающих букв, слой духовых — при сборке длинного слова.</li>
+          <li><b>Ночь:</b> музыкальная шкатулка, 60 BPM, редкие ноты-«звёзды».</li>
+          <li><b>Дождь:</b> фильтр low-pass + шум капель, музыка приглушается на 6 dB.</li>
+          <li><b>Парад:</b> марш с ксилофоном; <b>похороны:</b> 8 тактов тёплой элегии, без минора-давилки.</li>
+        </ul>
+        <h3 class="rv"><svg class="i"><use href="#i-warn"/></svg>Политика звука</h3>
+        <p class="rv">Звук включён по умолчанию, стартует после первого жеста (политика автоплея браузеров). <b>Один видимый переключатель в шапке глушит всё сразу</b> и показывает состояние. Громкости: музыка −14 LUFS, SFX −18, диктор −12. Все звуки привязаны к видимым событиям — никакой звуковой каши.</p>
+      </div>
+      <div class="rv sticky-col" data-md-skip>
+        <h3 style="margin-top:0"><svg class="i"><use href="#i-play"/></svg>Послушать эскизы (синтез на лету)</h3>
+        <button class="aprev" data-snd="word"><span class="pb"><svg class="i"><use href="#i-play"/></svg></span><span><b>Плинт сборки слова</b><span>арпеджио C-E-G + «чик» станка</span></span></button>
+        <button class="aprev" data-snd="honk"><span class="pb"><svg class="i"><use href="#i-play"/></svg></span><span><b>Гудок «Жука-Ж»</b><span>ж-ж-бип! перед ДТП и на перекрёстке</span></span></button>
+        <button class="aprev" data-snd="born"><span class="pb"><svg class="i"><use href="#i-play"/></svg></span><span><b>Рождение в «Аисте»</b><span>поп яйца + глиссандо шкатулки</span></span></button>
+        <button class="aprev" data-snd="day"><span class="pb"><svg class="i"><use href="#i-play"/></svg></span><span><b>Тема дня (8 тактов)</b><span>маримба-петля городского джаза</span></span></button>
+        <button class="aprev" data-snd="night"><span class="pb"><svg class="i"><use href="#i-play"/></svg></span><span><b>Колыбельная ночи</b><span>шкатулка, редкие ноты-звёзды</span></span></button>
+        <div class="tbl-wrap" style="margin-top:14px"><table class="tbl" style="min-width:0">
+          <thead><tr><th>Событие</th><th>SFX</th></tr></thead>
+          <tbody>
+            <tr><td>Шаги буквы</td><td>«пуп-пуп» по материалу дороги</td></tr>
+            <tr><td>Вход в слот</td><td>«клак» литеры + пружина</td></tr>
+            <tr><td>Выплата</td><td>звон монет-литер, панорама по слотам</td></tr>
+            <tr><td>Свадьба</td><td>«МА!» диктора + конфетти-шейкер</td></tr>
+            <tr><td>ДТП</td><td>скрип, «ой!», звёздочки-глокен</td></tr>
+            <tr><td>Болезнь</td><td>«Ф-ф-ф!» с ревербом</td></tr>
+            <tr><td>Уход к звёздам</td><td>восходящее глиссандо, тишина 2 с</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 TECH -->
+<section class="sec" id="tech" style="--acc:#2A2F5B;--accSoft:rgba(42,47,91,.07)">
+  <div class="wrap">
+    <div class="kick" data-md-skip>Рубрика · инженерия</div>
+    <h2 class="rv">Техническое задание</h2>
+    <p class="lead rv">Простой проверенный стек, один циклrequestAnimationFrame, фиксированный шаг симуляции, переиспользование геометрий и материалов. Красота — в данных и шейдерах, не в героическом коде.</p>
+    <h3 class="rv"><svg class="i"><use href="#i-factory"/></svg>Стек</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Слой</th><th>Технология</th><th>Обоснование</th></tr></thead>
+      <tbody>
+        <tr><td>Язык</td><td class="n">TypeScript (strict)</td><td>формулы и слог-правила покрыты типами и тестами</td></tr>
+        <tr><td>Рендер</td><td class="n">Three.js, WebGL2 → WebGL1 fallback</td><td>зрелая основа, ортокамера, инстансинг из коробки</td></tr>
+        <tr><td>Глифы букв</td><td class="n">opentype.js → контуры → ExtrudeGeometry (bevel)</td><td>33 кэшированные геометрии из шрифта; переиспользование всеми экземплярами</td></tr>
+        <tr><td>Шейдинг</td><td class="n">MeshToonMaterial + gradientMap 3 тона, inverted-hull outline</td><td>мультяшность без постпроцесс-зависимостей</td></tr>
+        <tr><td>Симуляция</td><td class="n">лёгкий ECS, fixed step 10 Гц, интерполяция рендера</td><td>детерминизм для офлайн-досимуляции</td></tr>
+        <tr><td>Пути</td><td class="n">A* по дорожной сетке + кэш маршрутов, spatial hash контактов</td><td>150 агентов без просадок</td></tr>
+        <tr><td>Сохранения</td><td class="n">IndexedDB, версионированная схема + миграции, автосейв 30 с</td><td>офлайн-first; облако — v1.1</td></tr>
+        <tr><td>Звук</td><td class="n">WebAudio, синтез + сэмплы, один master gain</td><td>мут одной кнопкой, адаптивные слои</td></tr>
+        <tr><td>Сборка</td><td class="n">Vite, code-split по районам, ассеты ≤1,2 МБ gz initial</td><td>TTI ≤3 с на 4G</td></tr>
+      </tbody>
+    </table></div>
+    <h3 class="rv"><svg class="i"><use href="#i-eye"/></svg>Рендер-пайплайн и бюджеты</h3>
+    <ul class="list rv">
+      <li>Один <span class="mono">requestAnimationFrame</span>; pixelRatio = min(devicePixelRatio, 2); симуляция отделена от рендера и не дублируется при паузах/ресайзах.</li>
+      <li>Свет: одна directional + hemisphere; тени статических объектов запекаются в текстуры тайлов, агенты — blob-тени. Shadow map обновляется не чаще 1 раза/с. Environment — запечённая полусфера.</li>
+      <li>Инстансинг: тайлы, окна, деревья, конфетти. Пулы объектов: монеты, партиклы, тосты — без аллокаций в горячем цикле.</li>
+      <li>Пост: FXAA + виньетка + tilt-shift (High); качество снижается вотчдогом при avg fps &lt;28 за 5 с, растёт при &gt;55 за 30 с.</li>
+    </ul>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Метрика</th><th>Бюджет</th><th>Реф-устройство</th></tr></thead>
+      <tbody>
+        <tr><td>FPS desktop</td><td class="n grn">60</td><td>M1 / GTX 1050</td></tr>
+        <tr><td>FPS mobile</td><td class="n grn">≥30</td><td>Snapdragon 730 / iPhone 11</td></tr>
+        <tr><td>Draw calls / треугольники</td><td class="n">≤120 / ≤350k</td><td>High tier</td></tr>
+        <tr><td>Агенты / здания</td><td class="n">≤150 / ≤60</td><td>потолок населения по жилью</td></tr>
+        <tr><td>JS heap</td><td class="n">≤150 МБ</td><td>после 1000 дней soak</td></tr>
+        <tr><td>Bundle initial / TTI</td><td class="n">≤1,2 МБ gz / ≤3 с</td><td>4G, mid-mobile</td></tr>
+        <tr><td>Офлайн-досимуляция 8 ч</td><td class="n">≤2 с</td><td>ускоренный прогон без рендера</td></tr>
+      </tbody>
+    </table></div>
+    <h3 class="rv"><svg class="i"><use href="#i-warn"/></svg>Quality tiers</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Tier</th><th>Тени</th><th>Пост</th><th>Партиклы</th><th>DPR</th></tr></thead>
+      <tbody>
+        <tr><td class="n">High</td><td>1024 + blob</td><td>FXAA, tilt-shift, виньетка</td><td class="n">100%</td><td class="n">2</td></tr>
+        <tr><td class="n">Medium</td><td>512 + blob</td><td>FXAA, виньетка</td><td class="n">60%</td><td class="n">1,5</td></tr>
+        <tr><td class="n">Low</td><td>только blob</td><td>нет</td><td class="n">30%</td><td class="n">1</td></tr>
+      </tbody>
+    </table></div>
+    <h3 class="rv"><svg class="i"><use href="#i-check"/></svg>Ввод и доступность</h3>
+    <ul class="list rv">
+      <li>Unified pointer events; tap vs drag — порог 8 px; pinch-zoom и пан жестами; на 360×640 весь core-flow проходим одним пальцем (bottom-sheet панели).</li>
+      <li>Дальтоник-режим (значки типов), размер шрифта ×1,25, «спокойный режим» (без ДТП-смертей), prefers-reduced-motion отключает дрифт камеры и конфетти.</li>
+      <li>Клавиатура: пробел — пауза, 1/2/3 — скорость, Esc — закрыть панель; фокус-ринги видимы.</li>
+    </ul>
+    <h3 class="rv"><svg class="i"><use href="#i-check"/></svg>Тестирование</h3>
+    <ul class="list rv">
+      <li><b>Слог-валидатор:</b> golden-таблица всех 1089 пар (33×33) как эталон; CI блокирует изменения правил без обновления эталона.</li>
+      <li><b>Формула наград:</b> snapshot-тесты эталонных слов из §04;property-тест: награда монотонна по длине и редкости.</li>
+      <li><b>Soak:</b> 1000 игровых дней ×3 сида; инварианты: кошельки ≥0, население ≤ вместимости, нет агентов, застрявших &gt;2 дней, частота ДТП в коридоре 0,5–2 на 100 букв-дней.</li>
+      <li><b>Fuzz словаря:</b> Ё/Й/Ъ/Ь, длина 2–15, мусорный ввод; словарь-фильтр не пропускает запрещёнку.</li>
+      <li><b>Устройства:</b> Chrome/Firefox/Safari/Edge, iOS 16+, Android 10+, 360×640…4K; 100 циклов свернуть/развернуть без утечек (heap-снапшоты); контекст-лосс WebGL восстанавливается.</li>
+      <li><b>Полный цикл:</b> рождение → школа → работа → свадьба → дитя → ДТП → болезнь → старость → наследство воспроизводим автотестом на сиде.</li>
+    </ul>
+    <h3 class="rv"><svg class="i"><use href="#i-eye"/></svg>Аналитика и KPI</h3>
+    <p class="rv">События: <span class="mono" style="font-size:13px">session_start/end · onboarding_step · word_built{word,payout,quality} · purchase · family_created{pair,harmony} · child_born{genetics} · death{cause,age} · building_placed · offline_report</span>. Цели: первое слово ≤90 с; D1 ≥35%, D7 ≥15%; медианная сессия ≥8 мин; свадьба в первый день у ≥25% активных сессий.</p>
+    <h3 class="rv"><svg class="i"><use href="#i-warn"/></svg>Риски и меры</h3>
+    <div class="tbl-wrap rv"><table class="tbl">
+      <thead><tr><th>Риск</th><th>Вероятность</th><th>Мера</th></tr></thead>
+      <tbody>
+        <tr><td>Слог-правила сложны казуалу</td><td class="n red">высокая</td><td>подсветка партнёров в ЗАГСе, сваха-подсказки, пресеты; правило учится кликом</td></tr>
+        <tr><td>Смерти пугают детскую аудиторию</td><td class="n">средняя</td><td>звёздочки вместо крестов, детский режим, первая потеря не раньше ~2 ч</td></tr>
+        <tr><td>Слабые Android</td><td class="n">средняя</td><td>quality tiers, инстансинг, DPR-кап, вотчдог</td></tr>
+        <tr><td>Идл-эксплойты и инфляция</td><td class="n">средняя</td><td>усталость, порча еды, износ, платный реролл, K_длины</td></tr>
+        <tr><td>Словарь надоест</td><td class="n">низкая</td><td>5000 слов, слово дня, вольная тема, сезонные паки</td></tr>
+        <tr><td>Юмор не зайдёт</td><td class="n">низкая</td><td>плейтесты «Вестника», частота событий в настройках</td></tr>
+      </tbody>
+    </table></div>
+    <h3 class="rv"><svg class="i"><use href="#i-book"/></svg>Форматы данных (приложение)</h3>
+    <pre class="formula rv"><span class="c">// карточка буквы (save-схема v1)</span>
+{ "id": 42, "ch": "Ж", "level": 3, "trait": "Лихач",
+  "needs": { "food": 71, "energy": 55, "mood": 62, "hp": 90 },
+  "wallet": 128, "home": 7, "family": { "slog": "ЖА", "spouse": 17 },
+  "age": 21, "words": 154, "bestWord": "ДРУЖБА" }
+
+<span class="c">// заказ</span>
+{ "word": "СЧАСТЬЕ", "slots": ["С","Ч","А","С","Т","Ь","Е"],
+  "deadline": null, "hot": false, "payout": 45 }</pre>
+  </div>
+</section>
+
+<!-- 11 PLAN -->
+<section class="sec" id="plan" style="--acc:#2FA65A;--accSoft:rgba(47,166,90,.09)">
+  <div class="wrap">
+    <div class="kick" data-md-skip>Рубрика · производство</div>
+    <h2 class="rv">План, команда, приёмка</h2>
+    <p class="lead rv">18 недель до софт-лонча. Команда: геймдиз-лид, gameplay-разработчик, рендер-разработчик, 2D/3D-художник, звук-дизайнер (part-time), QA (part-time). Каждый майлстоун — играбельный срез, а не отчёт.</p>
+    <div class="road rv" data-md-skip>
+      <div class="mile"><div class="mn">M0<small>нед 1–2</small></div><div class="mb"><i style="width:11%"></i></div><p>«Глиняный макет»: изометрия, 10 букв, типография, первое слово и выплата</p></div>
+      <div class="mile"><div class="mn">M1<small>нед 3–6</small></div><div class="mb"><i style="width:33%"></i></div><p>Петля: потребности, еда, магазины, жильё, аренда/налог, сейвы</p></div>
+      <div class="mile"><div class="mn">M2<small>нед 7–9</small></div><div class="mb"><i style="width:50%"></i></div><p>Слоги: ЗАГС-валидатор, генетика, Детский дом, рост детей</p></div>
+      <div class="mile"><div class="mn">M3<small>нед 10–12</small></div><div class="mb"><i style="width:67%"></i></div><p>Колёса: транспорт, дороги, светофоры, ДТП, болезни, смерти, Аллея</p></div>
+      <div class="mile"><div class="mn">M4<small>нед 13–14</small></div><div class="mb"><i style="width:78%"></i></div><p>«Вестник»: события, слово дня, коллекция, забастовки, парад</p></div>
+      <div class="mile"><div class="mn">M5<small>нед 15–17</small></div><div class="mb"><i style="width:94%"></i></div><p>Полироль: звук, онбординг, мобильный, tiers, аналитика, баланс</p></div>
+      <div class="mile"><div class="mn">M6<small>нед 18</small></div><div class="mb"><i style="width:100%"></i></div><p>Софт-лонч: стор браузера, метрики, хотфикс-окно</p></div>
+    </div>
+    <div class="road" style="display:none"></div>
+    <h3 class="rv"><svg class="i"><use href="#i-check"/></svg>Критерии приёмки v1.0</h3>
+    <ol class="check rv">
+      <li>Первый заказ «ДОМ» собирается без подсказок у ≥80% плейтестеров за ≤3 минуты.</li>
+      <li>60 fps на реф-desktop и ≥30 fps на реф-mobile при 100 активных буквах; орбита камеры плавная на стартовом качестве.</li>
+      <li>Soak 1000 дней ×3 сида: без крашей, отрицательных кошельков и нарушений инвариантов из §10.</li>
+      <li>Все 33 буквы имеют дом, работу и слог-пары; исключения Ъ/Ь задокументированы и реализованы (аура, холостяки).</li>
+      <li>Полный цикл «рождение → свадьба → дитя → смерть → наследство» воспроизводим и виден на улице города.</li>
+      <li>Офлайн 8 часов досимулируется ≤2 с и подаётся газетой; детерминизм на одном сиде.</li>
+      <li>Сохранение переживает перезагрузку, обновление версии и миграцию схемы.</li>
+      <li>Core-flow полностью проходим тачем на 360×640; ни один контрол не перекрыт и не обрезан.</li>
+      <li>Дальтоник-режим и детский режим работают; reduced-motion уважается.</li>
+      <li>Весь звук глушится одним видимым переключателем; автостарт только после жеста пользователя.</li>
+    </ol>
+    <h3 class="rv"><svg class="i"><use href="#i-warn"/></svg>Открытые вопросы (честно)</h3>
+    <ul class="list rv">
+      <li>Облачные сейвы и «гости из других городов» — v1.1 или сразу? Предлагаем v1.1.</li>
+      <li>EN-локализация интерфейса при русском словаре — нужна ли транслит-подсказка иноязычным?</li>
+      <li>Сезонные события («Дед Мороз-Д», «Весенняя капель-К») — в лонч или первым ивентом после?</li>
+      <li>Нужен ли режим «песочница без смертей» отдельно от детского режима — или это одна настройка?</li>
+    </ul>
+    <div class="quote rv"><p>«Мэрия напоминает: документ утверждён буквой Я лично. Буква Ё внесла 33 правки, буква Ъ молча учла их все. Печатать».</p></div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <h3>БУКВОГРАД · GDD v1.0</h3>
+      <p>19 ноября 2026 · сделано с любовью к букве Ё · все формулы этого документа можно потрогать на странице</p>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn gold" id="dlBtn2"><svg class="i"><use href="#i-dl"/></svg>Скачать .md</button>
+      <button class="btn" id="printBtn"><svg class="i"><use href="#i-print"/></svg>Печать / PDF</button>
+    </div>
+  </div>
+</footer>
+
+<button id="toTop" title="Наверх" aria-label="Наверх"><svg class="i"><use href="#i-up"/></svg></button>
+<div id="gToast" role="status"></div>
+
+<script>
+(function(){
+"use strict";
+/* ================= DATA ================= */
+var VOW="АЕЁИОУЫЭЮЯ", CONS="БВГДЖЗЙКЛМНПРСТФХЦЧШЩ", SIGNS="ЪЬ", ALPHABET="АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
+var MULT={"О":1,"Е":1,"А":1,"И":1,"Н":1,"Т":1,"С":1.2,"Р":1.2,"В":1.2,"Л":1.2,"К":1.2,"М":1.2,"Д":1.2,"П":1.2,"У":1.2,"Я":1.2,"Ы":1.5,"Ь":1.5,"Г":1.5,"З":1.5,"Б":1.5,"Ч":1.5,"Й":1.5,"Х":1.5,"Ж":2,"Ш":2,"Ю":2,"Ц":2,"Щ":2,"Э":2,"Ф":2.5,"Ъ":2.5,"Ё":2.5};
+var MUT={"Б":"П","П":"Б","В":"Ф","Ф":"В","Г":"К","К":"Г","Д":"Т","Т":"Д","Ж":"Ш","Ш":"Ж","З":"С","С":"З","М":"Н","Н":"М","Л":"Р","Р":"Л","Х":"Г","Ц":"Ч","Ч":"Ц","Щ":"Ш","Й":"И","А":"Я","Я":"А","О":"Ё","Ё":"О","У":"Ю","Ю":"У","Э":"Е","Е":"Э","Ы":"И","И":"Ы"};
+var RARE=["Ф","Щ","Э","Ю","Я","Й","Ё"];
+var TRAITS=["Трудоголик","Соня","Гурман","Лихач","Романтик","Ворчун","Душа компании","Копилка","Непоседа","Иммунитет","Везунчик","Перфекционист"];
+var DOSSIER={
+"А":["Оптимистка","Дом-шалаш с крышей-«А»","А — начало всего. Даже алфавита."],
+"Б":["Барабанщик","Домик с бочонком-чердаком","Б-б-б — это ритм города!"],
+"В":["Дипломат","Дом с двумя балконами","Всегда за мирные переговоры."],
+"Г":["Крановщик","Дом с флюгером-галстуком","Грузи ответственность!"],
+"Д":["Домовод","Дом с крылечком и трубой","Дом — полная чаша. И буква."],
+"Е":["Двойняшка Ё","Квартира рядом с Ё","Нет, я не Ё. Опять перепутали!"],
+"Ё":["Борец за справедливость","Дом с двумя огоньками на крыше","Ё моё! Ставьте точки!"],
+"Ж":["Мотожужжалка","Дом-жук с тремя трубами","Ж-ж-ж — и я уже на работе."],
+"З":["Заводила","Дом с забором-змейкой","З-з-здорово, коллеги!"],
+"И":["Тихоня-стержень","Дом-зеркало буквы Н","И всё-таки я держу слово."],
+"Й":["Кепка-непоседа","Дом с козырьком-бревисом","Йух! Перепрыгну перекрёсток!"],
+"К":["Кузнец","Дом-кузня с наковальней","Куй слова, пока горячо!"],
+"Л":["Лёгкая на подъём","Дом-палатка «Л»","Л-л-легко!"],
+"М":["Мама города","Дом с мезонином","М-м-м, вкусно пахнет щами."],
+"Н":["Надёжный","Дом-перемычка","На мне всё держится."],
+"О":["Душа компании","Круглый дом-колобок","О-о-о, какая команда!"],
+"П":["Прораб-портал","Дом-арка","Пройдёмте, не задерживаемся!"],
+"Р":["Рычатель-моторист","Дом с рыжей трубой","Р-р-работаем!"],
+"С":["Соня-полуночник","Дом-полумесяц","С-с-спать бы ещё пять минут…"],
+"Т":["Трудоголик","Дом-молоток","Т-т-точно в срок."],
+"У":["Улитка-мечтатель","Дом-улитка с трубочкой","У-у-ух, далеко ли до пятницы?"],
+"Ф":["Философ-фермер","Дом с двумя сараями","Ф-ф-феноменально."],
+"Х":["Хохотун","Дом с хитрой трубой","Х-х-ха! Опять Ё за Е приняли!"],
+"Ц":["Цирюльник","Дом с цоколем","Ц-ц-ц, какая стрижка!"],
+"Ч":["Чистюля","Дом с чайником на крыше","Ч-ч-чисто работаем."],
+"Ш":["Шёпот-сплетник","Дом с тремя трубами","Ш-ш-ш… слышали про Ы?"],
+"Щ":["Щекотун","Дом Ш с хвостиком-верандой","Щ-щ-щекотно же!"],
+"Ъ":["Твёрдый бухгалтер","Дом-крепость с уголком","Молчу. Но всё учтено."],
+"Ы":["Ворчун-складовщик","Общага «Ы»","Ы! Вечно я на складе…"],
+"Ь":["Мягкий воспитатель","Дом с мягким уголком","Мягче, коллеги, мягче."],
+"Э":["Эстет-экскурсовод","Дом-зеркало Е","Э-э-элегантно!"],
+"Ю":["Юла-танцовщица","Дом-юла с верандой","Ю-ю-ю, кружу по площади!"],
+"Я":["Мэр-самоучка","Пентхаус с флагштоком","Я — последняя в алфавите, первая в мэрии!"]};
+var WORDPOOL=["КОТ","ДОМ","МАМА","СЛОВО","ДРУЖБА","МОЛОКО","СЧАСТЬЕ","АЗБУКА","БУКВА","ГОРОД","РАБОТА","СЕМЬЯ","ЗАБОТА","ТРАМВАЙ","ПОДОРОЖНИК","БИБЛИОТЕКА","ЭНЦИКЛОПЕДИЯ","КОМПОТ","РОЯЛЬ","КАПУСТА"];
+function typeOf(c){return VOW.indexOf(c)>=0?"v":(CONS.indexOf(c)>=0?"c":"s")}
+function typeName(c){var t=typeOf(c);return t==="v"?"гласная":t==="c"?"согласная":"немой знак"}
+function fmt(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g," ")}
+function rnd(a,b){return a+Math.random()*(b-a)}
+function ri(a,b){return Math.floor(rnd(a,b+1))}
+function pick(arr){return arr[ri(0,arr.length-1)]}
+function $(id){return document.getElementById(id)}
+/* ================= SYLLABLE VALIDATOR ================= */
+function pairCheck(a,b){
+  if(!a||!b||a===b)return{ok:false,rule:"Выбери две разные буквы — с собой в Буквограде не женятся.",slog:a+b};
+  var ta=typeOf(a),tb=typeOf(b);
+  if(ta==="s"||tb==="s")return{ok:false,rule:"Немой знак не образует слог: звука нет — свадьбы нет. Зато аура соседям +25%.",slog:a+b};
+  if(ta==="v"&&tb==="v")return{ok:false,rule:"Две гласные — это уже песня, а не слог. В Буквограде так не женятся.",slog:a+b};
+  if(ta==="c"&&tb==="c")return{ok:false,rule:"Без гласной души слог не живёт. ЗАГС отказывает: найдите гласную.",slog:a+b};
+  var c=ta==="c"?a:b, v=ta==="v"?a:b, sg=(a===c);
+  if("ЖШЦ".indexOf(c)>=0&&v==="Ы"){
+    if(c==="Ц")return{ok:"license",rule:"ЦЫ — только по лицензии «Цыган» (500 Т). Цыган на цыпочках цыкнул цыплёнку — законное исключение.",slog:a+b,harmony:55,cost:Math.round(80*(MULT[c]+MULT[v])/2),c:c,v:v};
+    return{ok:false,rule:"ЖИ-ШИ пиши с И! Союз "+a+b+" невозможен — ступайте к букве И.",slog:a+b};
+  }
+  if("ЖШЧЩЦ".indexOf(c)>=0&&(v==="Я"||v==="Ю")){
+    var msg=(c==="Ч"||c==="Щ")?(v==="Я"?"ЧА-ЩА пиши с А!":"ЧУ-ЩУ пиши с У!"):"После Ж/Ш/Ц не пишут "+v+" — орфография запрещает этот союз.";
+    return{ok:false,rule:msg,slog:a+b};
+  }
+  if(c==="Й"&&v==="Ы")return{ok:false,rule:"Йот не дружит с Ы — они ссорятся ещё в букваре.",slog:a+b};
+  var harmony=70+(sg?15:0)+(("ЧЩЙ".indexOf(c)>=0||"ЕЁИЮЯ".indexOf(v)>=0)?10:0);
+  var cost=Math.round(80*(MULT[c]+MULT[v])/2); if(harmony>=85)cost=Math.round(cost*0.8);
+  return{ok:true,rule:sg?"Согласная + гласная — открытый слог. Классика Буквограда.":"Гласная + согласная — закрытый слог. Тоже живёт, чуть менее напевно.",slog:a+b,harmony:harmony,cost:cost,c:c,v:v,sg:sg};
+}
+function kidsPreview(c,v){
+  var m1=MUT[c]||c,m2=MUT[v]||v;
+  return[{c:c,p:40},{c:v,p:40},{c:m1+"/"+m2,p:15},{c:"★ редкая",p:5}];
+}
+/* ================= PAYOUT ================= */
+function payout(word,lvl,mood,day,fam){
+  var sum=0,L=word.length,i,ch,cl=0,run=0,sign=false;
+  for(i=0;i<L;i++){ch=word[i];sum+=2*(MULT[ch]||1)*(1+0.1*(lvl-1));
+    if(typeOf(ch)==="c"){run++;if(run===2)cl++}else run=0;
+    if(SIGNS.indexOf(ch)>=0)sign=true;}
+  var kL=1+0.15*(L-2),kQ=0.8+0.5*mood/100,kS=1+0.05*cl+(sign?0.15:0),kE=(day?2:1)*(fam?1.1:1);
+  return{total:Math.round(sum*kL*kQ*kS*kE),sum:sum,kL:kL,kQ:kQ,kS:kS,clusters:cl,sign:sign,L:L};
+}
+/* ================= AUDIO ================= */
+var AC=null,master=null,muted=false,audioArmed=false;
+function ensureAudio(){
+  if(AC||muted)return;
+  try{AC=new (window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=0.14;master.connect(AC.destination);}catch(e){AC=null}
+}
+function tone(freq,t0,dur,type,vol,slide){
+  if(!AC||muted)return;
+  var o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime+t0;
+  o.type=type||"sine";o.frequency.setValueAtTime(freq,t);
+  if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+dur);
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol||0.5,t+0.015);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+0.05);
+}
+var SFX={
+  word:function(){tone(523,0,0.16,"sine",0.5);tone(659,0.07,0.16,"sine",0.5);tone(784,0.14,0.3,"sine",0.55);tone(1568,0.2,0.1,"triangle",0.2)},
+  honk:function(){tone(220,0,0.12,"square",0.25,180);tone(220,0.16,0.14,"square",0.25,170)},
+  born:function(){tone(600,0,0.08,"sine",0.5,900);tone(784,0.1,0.12,"sine",0.4);tone(1046,0.2,0.25,"sine",0.4)},
+  click:function(){tone(880,0,0.05,"triangle",0.2)},
+  day:function(){var n=[523,659,784,659,880,784,659,523],i;for(i=0;i<8;i++)tone(n[i],i*0.16,0.14,"triangle",0.4)},
+  night:function(){var n=[1046,784,659,523,784],i;for(i=0;i<5;i++)tone(n[i],i*0.45,0.7,"sine",0.28)}
+};
+function play(name){if(muted)return;ensureAudio();if(!AC)return;if(AC.state==="suspended")AC.resume();if(SFX[name])SFX[name]()}
+document.addEventListener("pointerdown",function once(){audioArmed=true;if(!muted){ensureAudio();if(AC&&AC.state==="suspended")AC.resume()}document.removeEventListener("pointerdown",once)});
+var sndBtn=$("sndBtn");
+sndBtn.addEventListener("click",function(){
+  muted=!muted;sndBtn.setAttribute("aria-pressed",String(!muted));
+  sndBtn.querySelector("use").setAttribute("href",muted?"#i-mute":"#i-snd");
+  $("sndLbl").textContent=muted?"Звук: выкл":"Звук: вкл";
+  if(master)master.gain.value=muted?0:0.14;
+  if(!muted){ensureAudio();if(AC&&AC.state==="suspended")AC.resume();SFX.click()}
+});
+/* ================= GLOBAL UI ================= */
+var gToastT=null;
+function gToast(msg){var el=$("gToast");el.textContent=msg;el.classList.add("show");clearTimeout(gToastT);gToastT=setTimeout(function(){el.classList.remove("show")},2400)}
+var reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+var rvIO=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");rvIO.unobserve(e.target)}})},{threshold:0.12});
+document.querySelectorAll(".rv").forEach(function(el){rvIO.observe(el)});
+var secs=Array.prototype.slice.call(document.querySelectorAll("main .sec"));
+var navA=Array.prototype.slice.call(document.querySelectorAll("#navLinks a"));
+var secIO=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){navA.forEach(function(a){a.setAttribute("aria-current",a.getAttribute("href")==="#"+e.target.id?"true":"false")})}})},{rootMargin:"-35% 0px -55% 0px"});
+secs.forEach(function(s){secIO.observe(s)});
+var plxEls=Array.prototype.slice.call(document.querySelectorAll("[data-plx]"));
+var ticking=false;
+window.addEventListener("scroll",function(){
+  if(ticking)return;ticking=true;
+  requestAnimationFrame(function(){
+    var y=window.scrollY,h=document.documentElement.scrollHeight-window.innerHeight;
+    $("progress").style.width=(h>0?(y/h*100):0)+"%";
+    $("toTop").classList.toggle("show",y>700);
+    if(!reduced&&window.innerWidth>680)plxEls.forEach(function(el){el.style.transform="translateY("+(y*parseFloat(el.dataset.plx))+"px)"});
+    ticking=false;
+  });
+},{passive:true});
+$("toTop").addEventListener("click",function(){window.scrollTo({top:0,behavior:reduced?"auto":"smooth"})});
+/* ================= EXPORT MD ================= */
+function cellTxt(el){return el.textContent.replace(/\s+/g," ").trim().replace(/\|/g,"\\|")}
+function mdWalk(el,out){
+  if(el.nodeType!==1)return;
+  if(el.hasAttribute("data-md-skip")||/^(SVG|CANVAS|BUTTON|SELECT|INPUT|NAV|FOOTER)$/.test(el.tagName)||el.classList.contains("ctrl"))return;
+  var t=el.tagName,i,rows;
+  if(t==="H2"){out.push("\n## "+cellTxt(el)+"\n");return}
+  if(t==="H3"){out.push("\n### "+cellTxt(el)+"\n");return}
+  if(t==="H4"){out.push("\n#### "+cellTxt(el)+"\n");return}
+  if(t==="P"){var s=cellTxt(el);if(s)out.push(s+"\n");return}
+  if(t==="PRE"){out.push("```\n"+el.textContent.trim()+"\n```\n");return}
+  if(t==="UL"||t==="OL"){var li=el.children;for(i=0;i<li.length;i++)out.push((t==="OL"?(i+1)+". ":"- ")+cellTxt(li[i]));out.push("");return}
+  if(t==="TABLE"){
+    rows=el.querySelectorAll("tr");var head=true;
+    for(i=0;i<rows.length;i++){
+      var cells=rows[i].children,line=[];
+      for(var j=0;j<cells.length;j++)line.push(cellTxt(cells[j]));
+      out.push("| "+line.join(" | ")+" |");
+      if(head){out.push("|"+line.map(function(){return"---"}).join("|")+"|");head=false}
+    }
+    out.push("");return}
+  if(el.classList.contains("callout")){out.push("> **"+cellTxt(el.querySelector("b.lab"))+"** — "+cellTxt(el.querySelector("p"))+"\n");return}
+  if(el.classList.contains("quote")){out.push("> *«Вестник Буквограда»*: "+cellTxt(el.querySelector("p"))+"\n");return}
+  if(t==="DL"){var ch=el.children;for(i=0;i<ch.length;i+=2)out.push("- **"+cellTxt(ch[i])+"** — "+(ch[i+1]?cellTxt(ch[i+1]):""));out.push("");return}
+  for(i=0;i<el.children.length;i++)mdWalk(el.children[i],out);
+}
+function downloadMD(){
+  var out=["# БУКВОГРАД — дизайн-документ браузерной игры","","> GDD v1.0 · 19 ноября 2026 · изометрический WebGL-симулятор живого русского алфавита","> Жанр: уютный тайкун-сим с лингво-головоломкой · F2P без pay-to-win · сессия 5–15 мин + офлайн","",
+  "**Питч:** буквы живут в изометрическом городе, выходят из домов, идут или едут на работу, собирают слова за токены; тратят их на еду, мебель, транспорт и жильё; создают семьи только из слог-совместимых пар, рожают букв-детей в Детском доме, вырастают и иногда умирают — от старости, в ДТП или от болезни.",""];
+  secs.forEach(function(s){mdWalk(s,out)});
+  out.push("\n---\nСгенерировано интерактивной страницей ТЗ «Буквоград». Все формулы и таблицы соответствуют интерактивным макетам документа.");
+  var blob=new Blob([out.join("\n")],{type:"text/markdown;charset=utf-8"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="bukvograd-gdd-v1.0.md";document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},800);
+  gToast("Документ сохранён: bukvograd-gdd-v1.0.md");play("click");
+}
+["dlBtn","dlBtnHero","dlBtn2"].forEach(function(id){$(id).addEventListener("click",downloadMD)});
+$("printBtn").addEventListener("click",function(){window.print()});
+/* ================= ALPHABET EXPLORER ================= */
+var alphaGrid=$("alphaGrid"),curLetter="Ё";
+ALPHABET.split("").forEach(function(ch){
+  var b=document.createElement("button");
+  b.className="lbtn "+typeOf(ch);b.setAttribute("aria-pressed",String(ch===curLetter));
+  b.innerHTML=ch+"<small>×"+String(MULT[ch]).replace(".",",")+"</small>";
+  b.title="Буква "+ch;b.addEventListener("click",function(){selectLetter(ch);play("click")});
+  alphaGrid.appendChild(b);
+});
+function selectLetter(ch){
+  curLetter=ch;
+  Array.prototype.forEach.call(alphaGrid.children,function(b){b.setAttribute("aria-pressed",String(b.textContent.charAt(0)===ch))});
+  var d=DOSSIER[ch],t=typeOf(ch),col=t==="v"?"var(--red)":t==="c"?"var(--blue)":"var(--green)";
+  $("dosTile").style.background=col;$("dosTile").querySelector("span").textContent=ch;
+  $("dosName").textContent="Буква "+ch;
+  var grp=MULT[ch]===1?"частая":MULT[ch]===1.2?"обычная":MULT[ch]===1.5?"нечастая":MULT[ch]===2?"редкая":"уникальная";
+  $("dosType").textContent=typeName(ch)+" · "+grp;
+  $("dosMult").textContent="×"+String(MULT[ch]).replace(".",",");
+  $("dosBase").textContent=String(2*MULT[ch]).replace(".",",")+" Т на 1-м уровне";
+  $("dosTrait").textContent=d[0];$("dosHome").textContent=d[1];$("dosQuote").textContent="«"+d[2]+"»";
+  var n=0,lic=0;
+  ALPHABET.split("").forEach(function(o){if(o===ch)return;var r=pairCheck(ch,o);if(r.ok===true)n++;else if(r.ok==="license")lic++});
+  $("dosPairs").textContent=t==="s"?"0 — вечный холостяк (аура +25%)":n+" совместимых"+(lic?" + "+lic+" по лицензии":"");
+}
+$("dosMatch").addEventListener("click",function(){
+  $("selA").value=curLetter;renderPair();
+  document.querySelector("#family .exhibit").scrollIntoView({behavior:reduced?"auto":"smooth",block:"center"});
+  play("click");
+});
+selectLetter("Ё");
+/* ================= VALIDATOR UI ================= */
+var selA=$("selA"),selB=$("selB");
+ALPHABET.split("").forEach(function(ch){
+  selA.add(new Option(ch,ch));selB.add(new Option(ch,ch));
+});
+selA.value="М";selB.value="А";
+function renderPair(){
+  var a=selA.value,b=selB.value,r=pairCheck(a,b),card=$("pairCard");
+  card.className=r.ok===true?"ok":r.ok==="license"?"warn":"bad";
+  $("pSlog").textContent=a+b;
+  $("pVerdict").textContent=r.ok===true?"Слог звучит! Свадьба разрешена ✓":r.ok==="license"?"Можно, но по лицензии «Цыган» ⚠":"ЗАГС отказывает ✗";
+  $("pRule").textContent=r.rule;
+  var h=r.ok?r.harmony:0;
+  $("pHarm").style.width=h+"%";$("pHarmV").textContent=h;
+  $("pCost").textContent=r.ok?fmt(r.cost)+" Т":"—";
+  $("pBonus").textContent=r.ok===true?(r.sg?"порядок СГ: +15":"закрытый слог: +0")+(r.harmony>=85?" · скидка 20%":""):(r.ok==="license"?"созвучие 55 · без скидки":"созвучие 0");
+  var kids=$("pKids");kids.innerHTML="";
+  if(r.ok){
+    var lbl=document.createElement("span");lbl.textContent="Возможные дети:";kids.appendChild(lbl);
+    kidsPreview(r.c,r.v).forEach(function(k){
+      var s=document.createElement("span");s.className="kid";s.innerHTML="<b>"+k.c+"</b> "+k.p+"%";kids.appendChild(s);
+    });
+  }
+}
+selA.addEventListener("change",renderPair);selB.addEventListener("change",renderPair);
+$("swap").addEventListener("click",function(){var t=selA.value;selA.value=selB.value;selB.value=t;renderPair();play("click")});
+$("randPair").addEventListener("click",function(){selA.value=pick(ALPHABET.split(""));selB.value=pick(ALPHABET.split(""));renderPair();play("click")});
+document.querySelectorAll(".ppre").forEach(function(b){b.addEventListener("click",function(){var p=b.dataset.pair;selA.value=p[0];selB.value=p[1];renderPair();play("click")})});
+renderPair();
+/* ================= CALCULATOR ================= */
+var wIn=$("wIn"),wLvl=$("wLvl"),wMood=$("wMood"),wDay=$("wDay"),wFam=$("wFam"),lastTotal=0;
+function renderCalc(){
+  var raw=wIn.value.toUpperCase().replace(/[^А-ЯЁ]/g,"");
+  var err=$("wErr"),rows=$("wRows");
+  if(raw.length<2||raw.length>15){err.textContent=raw.length===0?"Введи слово русскими буквами (2–15).":"Слово должно быть от 2 до 15 букв.";rows.innerHTML="";$("wTotal").textContent="—";$("wMeta").innerHTML="";return}
+  err.textContent="";
+  var lvl=+wLvl.value,mood=+wMood.value;
+  $("wLvlV").textContent=lvl;$("wMoodV").textContent=mood;
+  var r=payout(raw,lvl,mood,wDay.checked,wFam.checked);
+  rows.innerHTML="";
+  raw.split("").forEach(function(ch){
+    var tr=document.createElement("tr"),t=typeOf(ch),cls=t==="v"?"v":t==="c"?"c":"s";
+    var base=2*MULT[ch]*(1+0.1*(lvl-1));
+    tr.innerHTML='<td><span class="bl '+cls+'">'+ch+'</span></td><td>'+typeName(ch)+'</td><td class="n">×'+String(MULT[ch]).replace(".",",")+'</td><td class="n gold">'+base.toFixed(1).replace(".",",")+' Т</td>';
+    rows.appendChild(tr);
+  });
+  $("wMeta").innerHTML="<span>L = "+r.L+"</span><span>K длины = "+r.kL.toFixed(2)+"</span><span>K качества = "+r.kQ.toFixed(2)+"</span><span>K структуры = "+r.kS.toFixed(2)+(r.clusters?" (стечений: "+r.clusters+")":"")+(r.sign?" +Ъ/Ь":"")+"</span>"+(wDay.checked?"<span>Слово дня ×2</span>":"")+(wFam.checked?"<span>семья ×1,1</span>":"");
+  var target=r.total,el=$("wTotal"),start=lastTotal,t0=performance.now();
+  lastTotal=target;
+  function step(now){var k=Math.min(1,(now-t0)/300);el.textContent=fmt(Math.round(start+(target-start)*(1-Math.pow(1-k,3))));if(k<1)requestAnimationFrame(step)}
+  requestAnimationFrame(step);
+}
+[wIn,wLvl,wMood,wDay,wFam].forEach(function(el){el.addEventListener("input",renderCalc)});
+document.querySelectorAll(".wpre").forEach(function(b){b.addEventListener("click",function(){wIn.value=b.dataset.w;renderCalc();play("click")})});
+renderCalc();
+/* ================= LIFE SIMULATOR ================= */
+var lifeBusy=false;
+function simulateLife(){
+  if(lifeBusy)return;lifeBusy=true;setTimeout(function(){lifeBusy=false},600);
+  var c,v,guard=0,r;
+  do{c=pick(CONS.split(""));v=pick(VOW.split(""));r=pairCheck(c,v);guard++}while(r.ok!==true&&guard<80);
+  var roll=Math.random(),subj=roll<0.4?c:roll<0.8?v:roll<0.95?(MUT[Math.random()<0.5?c:v]||c):pick(RARE);
+  var trait=pick(TRAITS),ev=[],deathDay=ri(55,65),cause="старость",transport=null,transDay=0,married=false,spouse=null,wedDay=0;
+  ev.push({d:0,big:1,txt:"В Детском доме «Аист» аист принёс яйцо-«Я». Из слога "+c+v+" родилась буква "+subj+" (черта: "+trait+")."});
+  ev.push({d:3,txt:"Подросла. Первые слова звуком: «"+subj+"-"+subj.toLowerCase()+"-"+subj.toLowerCase()+"!» Родители умиляются."});
+  ev.push({d:6,txt:"Выросла и вышла на первую смену: "+pick(["Типография «Печатный Двор»","Фабрика Заголовков","Редакция «Вестник»"])+". Первое слово — «"+pick(["КОТ","ДОМ","МАК","ТАК"])+"»."});
+  if(Math.random()<0.8){transport=pick(["Самокат «С»","Велосипед","Автомобиль «Жук-Ж»","Ё-мобиль"]);transDay=ri(8,14);
+    ev.push({d:transDay,txt:"Купила "+transport+" за "+({"Самокат «С»":60,"Велосипед":100,"Автомобиль «Жук-Ж»":400,"Ё-мобиль":1500})[transport]+" Т. Теперь на смену — с ветерком."});}
+  if(Math.random()<0.6)ev.push({d:ri(10,30),txt:"Обжила дом: "+pick(["диван «Д» — вечера стали теплее","рояль «Р» — двор слушает концерты","телевизор «ТБ» — смотрит новости о себе","ковёр — здоровье +1 в день"])+"."});
+  var partners=ALPHABET.split("").filter(function(o){return o!==subj&&pairCheck(subj,o).ok===true});
+  if(partners.length){spouse=pick(partners);wedDay=ri(9,18);married=true;
+    var pr=pairCheck(subj,spouse);
+    ev.push({d:wedDay,big:1,txt:"Свадьба в ЗАГСе «Слоговой Союз»: "+subj+"+"+spouse+" = «"+pr.slog+"». Созвучие "+pr.harmony+"/100, гости кидают конфетти-запятые."});
+    if(Math.random()<0.85){var kd=wedDay+ri(2,5),kr=Math.random(),kid=kr<0.4?pr.c:kr<0.8?pr.v:kr<0.95?(MUT[Math.random()<0.5?pr.c:pr.v]||pr.c):pick(RARE);
+      ev.push({d:kd,txt:"В Детском доме треснуло яйцо-«Я»: родился "+kid+" (семья "+pr.slog+", 150 Т из сундука). Впереди школа «Букварик»."});}
+  } else ev.push({d:12,txt:"Осталась холостяком: немые знаки не образуют слогов. Зато стала лучшим бухгалтером мэрии."});
+  if(Math.random()<0.4){var illDay=ri(20,45);
+    if(Math.random()<0.1){cause="болезнь";deathDay=illDay+ri(6,12);ev.push({d:illDay,txt:"Подхватила «Грипп-Ф»: чихает «Ф-ф-ф!» на весь цех."});ev.push({d:illDay+3,txt:"Лечение отложено — «само пройдёт». Здоровье тает…"})}
+    else ev.push({d:illDay,txt:"Слегла с «Гриппом-Ф». Больница «Айболит-А», "+ri(30,90)+" Т — и через два дня снова в строю."});}
+  if(transport&&cause==="старость"&&Math.random()<0.45){
+    var ad=ri(Math.max(15,transDay+1),50),sev=Math.random();
+    if(sev<0.7)ev.push({d:ad,txt:"ДТП на перекрёстке! «Ой!» — звёздочки, здоровье −30, ремонт "+ri(40,120)+" Т. Светофор бы не помешал."});
+    else if(sev<0.95)ev.push({d:ad,txt:"Серьёзное ДТП: больница, здоровье −60. Страховка «ОСАГО-Ъ» покрыла ремонт."});
+    else{cause="ДТП";deathDay=ad;ev.push({d:ad,txt:"Ливень, перекрёсток без светофора… «Жук» занесло."})}
+  }
+  var best=pick(WORDPOOL),words=Math.max(10,(deathDay-6)*ri(4,6)),earned=words*ri(3,5);
+  ev.push({d:ri(25,44),txt:"Рекорд смены: слово «"+best+"»! Конвейер чихнул конфетти, мэр выписал премию."});
+  if(cause==="старость"){ev.push({d:ri(48,52),txt:"Ушла на пенсию: парк «Ёлки-палки», голуби-«Г», мемуары «Как я держала слово»."});}
+  var deathTxt=cause==="старость"?"Тихо заснула во сне и превратилась в звёздочку. Город снял кепки-бревисы.":cause==="ДТП"?"Не вернулась со смены. На перекрёстке поставили светофор — уже для других.":"Болезнь победила. Больница развела крыльями: «Ф-ф-ф…»";
+  ev.push({d:deathDay,death:1,txt:deathTxt+" Похороны: процессия с венками-запятыми, эпитафия — «"+best+"»."});
+  ev.sort(function(a,b){return a.d-b.d});
+  var log=$("lifeLog");log.innerHTML="";
+  ev.forEach(function(e,i){
+    var div=document.createElement("div");
+    div.className="life-line"+(e.big?" big":"")+(e.death?" death":"");
+    div.style.setProperty("--i",i);
+    div.innerHTML='<span class="d">день '+e.d+'</span><span>'+e.txt+'</span>';
+    log.appendChild(div);
+  });
+  var card=$("lifeCard");card.classList.add("show");
+  var t=typeOf(subj);
+  $("lcTile").textContent=subj;$("lcTile").style.background=t==="v"?"var(--red)":t==="c"?"var(--blue)":"var(--green)";
+  $("lcStats").innerHTML="<b>Буква "+subj+"</b> · "+(married?"семья «"+pairCheck(subj,spouse).slog+"»":"холостяк")+" · прожила <b>"+deathDay+"</b> дней · уход: <b>"+cause+"</b><br>Слов собрано: <b>"+fmt(words)+"</b> · заработано: <b>"+fmt(earned)+" Т</b> · лучшее слово: <b>«"+best+"»</b><br><span style='color:var(--ink2)'>Аллея Памяти, участок Ь. Призрак навещает семью раз в месяц.</span>";
+  play(cause==="старость"?"night":"born");
+}
+$("lifeBtn").addEventListener("click",simulateLife);
+var lifeOnce=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){simulateLife();lifeOnce.disconnect()}})},{threshold:0.3});
+lifeOnce.observe($("lifeBtn"));
+/* ================= MAP ================= */
+var ZONES=[
+ {id:"azb",name:"Азбуковка · жилой квартал",gx:1,gy:1,w:3,h:2,col:"#E8452C",desc:"Домики-литеры шести тиров. Дом А — шалаш, О — колобок, у Ш три трубы. Отсюда буквы выходят на смену через зебру.",list:["Общага «Ы»","Комната 150 Т","Квартира 400 Т","Домик 900 Т","Коттедж 2000 Т","Пентхаус «Ю» 5000 Т"]},
+ {id:"prom",name:"Словоцеха · промзона",gx:5,gy:1,w:3,h:2,col:"#2A2F5B",desc:"Пять производств слова: от Типографии до Академии. Конвейеры, слоты-литеры, дым-«Ш» из труб.",list:["Типография (старт)","Фабрика 600 Т","Редакция 1200 Т","Комбинат 2500 Т","Академия 5000 Т"]},
+ {id:"center",name:"Центр · Мэрия и Площадь",gx:3,gy:3,w:2,h:2,col:"#F2B32C",desc:"Мэрия «Я», Доска почёта со словом дня, Площадь Алфавита: парад А→Я каждые 7 дней.",list:["Мэрия «Я»","Площадь 100 Т","Доска почёта"]},
+ {id:"market",name:"Базарная Б · рынок",gx:1,gy:4,w:2,h:2,col:"#2FA65A",desc:"Еда, мебель, транспорт. Кафе «Щи да Каша»: буквы обедают, мэр получает маржу 30%.",list:["Рынок 150 Т","Кафе 120 Т","Аптека 80 Т"]},
+ {id:"family",name:"Слоговой квартал",gx:6,gy:4,w:2,h:2,col:"#D6408F",desc:"ЗАГС проверяет слоги, Детский дом «Аист» выращивает яйца-«Я» на капустной грядке, школа «Букварик» растит подростков.",list:["ЗАГС 300 Т","Детский дом 350 Т","Школа 200 Т"]},
+ {id:"park",name:"Тихий Ъ · парк и память",gx:3,gy:6,w:3,h:1,col:"#1FA9A0",desc:"Парк «Ёлки-палки» для свиданий и пенсий, больница «Айболит-А», Аллея Памяти с надгробиями-литерами и эпитафиями-словами.",list:["Парк 100 Т","Больница 250 Т","Аллея Памяти"]}
+];
+function isoPt(x,y){return[430+(x-y)*46,96+(x+y)*26]}
+function polyStr(pts){return pts.map(function(p){return p[0].toFixed(1)+","+p[1].toFixed(1)}).join(" ")}
+function buildMap(){
+  var s='<svg viewBox="0 0 860 560" role="img" aria-label="Карта районов Буквограда">';
+  var g0=isoPt(0,0),g1=isoPt(9,0),g2=isoPt(9,8),g3=isoPt(0,8);
+  s+='<polygon points="'+polyStr([g0,g1,g2,g3])+'" fill="#8FCB7B" stroke="#2A2F5B" stroke-width="3"/>';
+  for(var i=1;i<9;i++){var a=isoPt(i,0),b=isoPt(i,8);s+='<line x1="'+a[0]+'" y1="'+a[1]+'" x2="'+b[0]+'" y2="'+b[1]+'" stroke="#2A2F5B" stroke-width="1" opacity=".12"/>'}
+  for(var j=1;j<8;j++){var c1=isoPt(0,j),c2=isoPt(9,j);s+='<line x1="'+c1[0]+'" y1="'+c1[1]+'" x2="'+c2[0]+'" y2="'+c2[1]+'" stroke="#2A2F5B" stroke-width="1" opacity=".12"/>'}
+  var r1=isoPt(0.5,3.1),r2=isoPt(8.5,3.1),r3=isoPt(8.5,3.6),r4=isoPt(0.5,3.6);
+  s+='<polygon points="'+polyStr([r1,r2,r3,r4])+'" fill="#565B85" stroke="#2A2F5B" stroke-width="2"/>';
+  var v1=isoPt(4.6,0.5),v2=isoPt(5.1,0.5),v3=isoPt(5.1,7.5),v4=isoPt(4.6,7.5);
+  s+='<polygon points="'+polyStr([v1,v2,v3,v4])+'" fill="#565B85" stroke="#2A2F5B" stroke-width="2"/>';
+  ZONES.forEach(function(z){
+    var p0=isoPt(z.gx,z.gy),p1=isoPt(z.gx+z.w,z.gy),p2=isoPt(z.gx+z.w,z.gy+z.h),p3=isoPt(z.gx,z.gy+z.h);
+    var d=14;
+    s+='<g class="zone" data-zone="'+z.id+'" tabindex="0" role="button" aria-label="'+z.name+'">';
+    s+='<polygon points="'+polyStr([p3,p2,[p2[0],p2[1]+d],[p3[0],p3[1]+d]])+'" fill="#2A2F5B" opacity=".55"/>';
+    s+='<polygon points="'+polyStr([p1,p2,[p2[0],p2[1]+d],[p1[0],p1[1]+d]])+'" fill="#171B3A" opacity=".45"/>';
+    s+='<polygon class="ztop" points="'+polyStr([p0,p1,p2,p3])+'" fill="'+z.col+'" stroke="#2A2F5B" stroke-width="3"/>';
+    s+='<polygon class="zring" points="'+polyStr([p0,p1,p2,p3])+'" fill="none" stroke="#F2B32C" stroke-width="5"/>';
+    var n=z.w, bx,by,pp;
+    for(var k=0;k<n;k++){
+      bx=z.gx+0.5+k*(z.w-1)/Math.max(1,n-1);by=z.gy+z.h/2;pp=isoPt(bx,by);
+      var w=17,h=20;
+      s+='<g><polygon points="'+(pp[0]-w)+','+pp[1]+' '+pp[0]+','+(pp[1]-w*0.55)+' '+(pp[0]+w)+','+pp[1]+' '+pp[0]+','+(pp[1]+w*0.55)+'" fill="#FFFDF7" stroke="#2A2F5B" stroke-width="2"/>';
+      s+='<polygon points="'+(pp[0]-w)+','+pp[1]+' '+(pp[0]-w)+','+(pp[1]+h)+' '+pp[0]+','+(pp[1]+w*0.55+h)+' '+pp[0]+','+(pp[1]+w*0.55)+'" fill="'+z.col+'" stroke="#2A2F5B" stroke-width="2" opacity=".85"/>';
+      s+='<polygon points="'+(pp[0]+w)+','+pp[1]+' '+(pp[0]+w)+','+(pp[1]+h)+' '+pp[0]+','+(pp[1]+w*0.55+h)+' '+pp[0]+','+(pp[1]+w*0.55)+'" fill="#2A2F5B" stroke="#2A2F5B" stroke-width="2" opacity=".7"/></g>';
+    }
+    var lp=isoPt(z.gx+z.w/2,z.gy+z.h+0.55);
+    s+='<text x="'+lp[0]+'" y="'+(lp[1]+8)+'" text-anchor="middle" font-family="Manrope,sans-serif" font-weight="800" font-size="14" fill="#2A2F5B" stroke="#F6EFE3" stroke-width="4" paint-order="stroke">'+z.name.split(" · ")[0]+'</text>';
+    s+='</g>';
+  });
+  s+='<text x="430" y="46" text-anchor="middle" font-family="Unbounded,sans-serif" font-weight="900" font-size="22" fill="#2A2F5B">КАРТА БУКВОГРАДА</text>';
+  s+='<text x="430" y="66" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="#565B85">сетка 48×48 · изометрия 2:1 · кольцевая дорога с зебрами</text></svg>';
+  $("mapBox").innerHTML=s;
+  $("mapBox").querySelectorAll(".zone").forEach(function(g){
+    function show(){
+      $("mapBox").querySelectorAll(".zone").forEach(function(o){o.classList.remove("hot")});
+      g.classList.add("hot");
+      var z=ZONES.filter(function(o){return o.id===g.dataset.zone})[0];
+      $("ziName").textContent=z.name;$("ziDesc").textContent=z.desc;
+      $("ziList").innerHTML=z.list.map(function(x){return"<span>"+x+"</span>"}).join("");
+    }
+    g.addEventListener("mouseenter",show);g.addEventListener("click",function(){show();play("click")});
+    g.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();show()}});
+  });
+  var z0=ZONES[0];$("ziList").innerHTML=z0.list.map(function(x){return"<span>"+x+"</span>"}).join("");
+  $("mapBox").querySelector(".zone").classList.add("hot");
+}
+buildMap();
+/* ================= PALETTE ================= */
+var PALETTE=[["Бумага","#F6EFE3","фон, поля, воздух"],["Чернила","#2A2F5B","текст, контуры, ночь"],["Гласные","#E8452C","красный код азбуки, опасность"],["Согласные","#2D6BE4","синий код, информация"],["Мягкость","#2FA65A","знаки, успех, природа"],["Токены","#F2B32C","золото наград, предупреждение"],["Семья","#D6408F","ЗАГС, слоги, маджента"],["Транспорт","#1FA9A0","бирюза дорог и колёс"]];
+var pal=$("palette");
+PALETTE.forEach(function(p){
+  var b=document.createElement("button");b.className="swatch";b.title="Скопировать "+p[1];
+  b.innerHTML='<i style="background:'+p[1]+'"></i><div><b>'+p[0]+'</b><span>'+p[1]+' · '+p[2]+'</span></div>';
+  b.addEventListener("click",function(){
+    function done(){gToast("Скопирован "+p[1]+" — "+p[0]);play("click")}
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(p[1]).then(done,done);else done();
+  });
+  pal.appendChild(b);
+});
+/* ================= AUDIO PREVIEWS ================= */
+document.querySelectorAll(".aprev").forEach(function(b){
+  b.addEventListener("click",function(){
+    if(muted){gToast("Звук выключен — включи его в шапке одним переключателем");return}
+    play(b.dataset.snd);
+    b.classList.add("playing");setTimeout(function(){b.classList.remove("playing")},b.dataset.snd==="day"?1400:b.dataset.snd==="night"?2400:700);
+  });
+});
+/* ================= THREE LOADER + DEMO ================= */
+var demoInited=false,demoFailed=false;
+function demoFallback(){
+  if(demoInited||demoFailed)return;demoFailed=true;
+  $("demoLoading").style.display="none";$("demoFallback").style.display="block";
+  $("demoCtrl").classList.add("disabled");
+  Array.prototype.forEach.call($("demoCtrl").querySelectorAll("input,select,button"),function(el){el.disabled=true});
+}
+function loadThree(){
+  var s=document.createElement("script");
+  s.src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js";
+  s.onload=function(){tryInitDemo()};
+  s.onerror=function(){
+    var t=document.createElement("script");
+    t.src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js";
+    t.onload=function(){tryInitDemo()};t.onerror=demoFallback;
+    document.head.appendChild(t);
+  };
+  document.head.appendChild(s);
+  setTimeout(function(){if(!window.THREE&&!demoInited)demoFallback()},9000);
+}
+function tryInitDemo(){if(window.THREE&&!demoInited&&!demoFailed){try{initDemo()}catch(e){demoFallback()}}}
+loadThree();
+
+function initDemo(){
+  demoInited=true;
+  var wrap=$("demoCanvasWrap");
+  var renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.outputEncoding=THREE.sRGBEncoding;
+  wrap.appendChild(renderer.domElement);
+  $("demoLoading").style.display="none";
+
+  var scene=new THREE.Scene();
+  scene.fog=new THREE.Fog(0xCFE8F7,26,60);
+  var camera=new THREE.OrthographicCamera(-8,8,5.2,-5.2,0.1,120);
+  var hemi=new THREE.HemisphereLight(0xffffff,0x8FCB7B,0.95);scene.add(hemi);
+  var sun=new THREE.DirectionalLight(0xffffff,1.05);sun.position.set(9,16,7);scene.add(sun);
+
+  var S={speed:1,hour:9,day:1,pop:8,rain:false,light:true,word:"КОТ",paused:false,tokens:0,words:0,crashes:0,az:0,azT:0,zoom:1,zoomT:1,lightT:0,crashCd:0};
+  var geoCache={},matCache={},texCache={};
+  function box(w,h,d){var k="b"+w+"_"+h+"_"+d;if(!geoCache[k])geoCache[k]=new THREE.BoxGeometry(w,h,d);return geoCache[k]}
+  function cyl(rt,rb,h,seg){var k="c"+rt+"_"+rb+"_"+h+"_"+seg;if(!geoCache[k])geoCache[k]=new THREE.CylinderGeometry(rt,rb,h,seg||10);return geoCache[k]}
+  function cone(r,h,seg){var k="k"+r+"_"+h+"_"+seg;if(!geoCache[k])geoCache[k]=new THREE.ConeGeometry(r,h,seg||8);return geoCache[k]}
+  function sph(r){var k="s"+r;if(!geoCache[k])geoCache[k]=new THREE.SphereGeometry(r,10,8);return geoCache[k]}
+  function mat(color,emissive){var k="m"+color+"_"+(emissive||0);if(!matCache[k]){var m=new THREE.MeshLambertMaterial({color:color});if(emissive){m.emissive=new THREE.Color(emissive);m.emissiveIntensity=0}matCache[k]=m}return matCache[k]}
+  var blobGeo=new THREE.CircleGeometry(0.42,14);
+  var blobMat=new THREE.MeshBasicMaterial({color:0x171B3A,transparent:true,opacity:0.16});
+  function blob(parent,scale){var m=new THREE.Mesh(blobGeo,blobMat);m.rotation.x=-Math.PI/2;m.position.y=0.02;m.scale.setScalar(scale||1);parent.add(m);return m}
+  function letterTex(ch,bg){
+    var k="t"+ch+bg;if(texCache[k])return texCache[k];
+    var cv=document.createElement("canvas");cv.width=128;cv.height=160;var g=cv.getContext("2d");
+    g.fillStyle=bg;g.fillRect(0,0,128,160);
+    g.fillStyle="rgba(255,255,255,.14)";g.fillRect(0,0,128,54);
+    g.fillStyle="#fff";g.beginPath();g.arc(40,34,11,0,7);g.arc(88,34,11,0,7);g.fill();
+    g.fillStyle="#171B3A";g.beginPath();g.arc(43,36,4.5,0,7);g.arc(91,36,4.5,0,7);g.fill();
+    g.fillStyle="#fff";g.font="900 84px Unbounded, Arial";g.textAlign="center";g.textBaseline="middle";
+    g.fillText(ch,64,104);
+    var t=new THREE.CanvasTexture(cv);t.encoding=THREE.sRGBEncoding;texCache[k]=t;return t;
+  }
+  var TYPECOL={v:"#E8452C",c:"#2D6BE4",s:"#2FA65A"};
+  function makeLetter(ch){
+    var grp=new THREE.Group(),col=TYPECOL[typeOf(ch)];
+    var side=mat(col),face=new THREE.MeshLambertMaterial({map:letterTex(ch,col)});
+    var body=new THREE.Mesh(box(0.56,0.72,0.2),[side,side,side,side,face,face]);
+    body.position.y=0.62;grp.add(body);
+    var legM=mat("#171B3A");
+    var l1=new THREE.Mesh(box(0.09,0.26,0.09),legM);l1.position.set(-0.14,0.13,0);grp.add(l1);
+    var l2=l1.clone();l2.position.x=0.14;grp.add(l2);
+    var umb=new THREE.Mesh(cone(0.42,0.22,8),mat("#F2B32C"));umb.position.y=1.24;umb.visible=false;grp.add(umb);
+    blob(grp,0.9);
+    grp.userData={body:body,l1:l1,l2:l2,umb:umb};
+    return grp;
+  }
+  /* ground & roads */
+  var ground=new THREE.Mesh(box(19,0.5,19),mat("#8FCB7B"));ground.position.y=-0.25;scene.add(ground);
+  var patches=[[-3,2,2.4],[3.4,-1.4,1.8],[-2.6,-2.4,1.5],[2,3,2]];
+  patches.forEach(function(p){var m=new THREE.Mesh(box(p[2],0.06,p[2]*0.8),mat("#7DBB68"));m.position.set(p[0],0.03,p[1]);scene.add(m)});
+  var roadM=mat("#565B85");
+  function road(x,z,w,d){var m=new THREE.Mesh(box(w,0.08,d),roadM);m.position.set(x,0.04,z);scene.add(m);return m}
+  road(0,-5,11.6,1.6);road(0,5,11.6,1.6);road(-5,0,1.6,11.6);road(5,0,1.6,11.6);
+  var dashM=mat("#F6EFE3");
+  for(var di=-4;di<=4;di+=2){var d1=new THREE.Mesh(box(0.7,0.02,0.1),dashM);d1.position.set(di,0.09,-5);scene.add(d1);var d2=d1.clone();d2.position.z=5;scene.add(d2);var d3=new THREE.Mesh(box(0.1,0.02,0.7),dashM);d3.position.set(-5,0.09,di);scene.add(d3);var d4=d3.clone();d4.position.x=5;scene.add(d4)}
+  var zebM=mat("#FFFDF7");
+  for(var zi=0;zi<5;zi++){var z1=new THREE.Mesh(box(0.22,0.02,1.5),zebM);z1.position.set(-0.7+zi*0.35,0.095,-5);scene.add(z1)}
+  /* traffic light */
+  var tl=new THREE.Group();tl.position.set(1.15,0,-5.95);scene.add(tl);
+  var pole=new THREE.Mesh(cyl(0.05,0.06,1.3),mat("#2A2F5B"));pole.position.y=0.65;tl.add(pole);
+  var tlBox=new THREE.Mesh(box(0.24,0.55,0.2),mat("#171B3A"));tlBox.position.y=1.5;tl.add(tlBox);
+  var tlRed=new THREE.Mesh(sph(0.075),new THREE.MeshLambertMaterial({color:"#E8452C",emissive:"#E8452C",emissiveIntensity:0.9}));tlRed.position.set(0,1.65,0.11);tl.add(tlRed);
+  var tlGrn=new THREE.Mesh(sph(0.075),new THREE.MeshLambertMaterial({color:"#2FA65A",emissive:"#2FA65A",emissiveIntensity:0.1}));tlGrn.position.set(0,1.36,0.11);tl.add(tlGrn);
+  /* houses */
+  var HOUSE_COL=["#E8452C","#1FA9A0","#D6408F","#2D6BE4"];
+  var houses=[],houseX=[-4,-1.5,1,3.5];
+  houseX.forEach(function(hx,i){
+    var g=new THREE.Group();g.position.set(hx,0,-7.2);scene.add(g);
+    var walls=new THREE.Mesh(box(1.7,1.15,1.4),mat("#FFFDF7"));walls.position.y=0.58;g.add(walls);
+    var roof=new THREE.Mesh(cone(1.35,0.9,4),mat(HOUSE_COL[i]));roof.position.y=1.6;roof.rotation.y=Math.PI/4;g.add(roof);
+    var door=new THREE.Mesh(box(0.34,0.6,0.06),mat("#2A2F5B"));door.position.set(0,0.3,0.72);g.add(door);
+    var winM=new THREE.MeshLambertMaterial({color:"#BFE3F7",emissive:"#F2B32C",emissiveIntensity:0});
+    [-0.5,0.5].forEach(function(wx){var w=new THREE.Mesh(box(0.32,0.32,0.05),winM);w.position.set(wx,0.78,0.72);g.add(w)});
+    var chim=new THREE.Mesh(box(0.2,0.5,0.2),mat("#2A2F5B"));chim.position.set(0.5,1.75,-0.2);g.add(chim);
+    var signFace=new THREE.MeshLambertMaterial({map:letterTex(ALPHABET[i*3],HOUSE_COL[i])});
+    var sign=new THREE.Mesh(box(0.4,0.5,0.1),[mat(HOUSE_COL[i]),mat(HOUSE_COL[i]),mat(HOUSE_COL[i]),mat(HOUSE_COL[i]),signFace,signFace]);
+    sign.position.set(0,2.28,0);g.add(sign);
+    blob(g,2.4);
+    houses.push({g:g,roof:roof,winM:winM,x:hx});
+  });
+  /* factory */
+  var fac=new THREE.Group();fac.position.set(0.4,0,2.6);scene.add(fac);
+  var facBody=new THREE.Mesh(box(4.6,1.5,1.8),mat("#2A2F5B"));facBody.position.y=0.75;fac.add(facBody);
+  var facRoof=new THREE.Mesh(box(4.9,0.25,2.1),mat("#F2B32C"));facRoof.position.y=1.62;fac.add(facRoof);
+  var facChim=new THREE.Mesh(cyl(0.22,0.28,1.3),mat("#E8452C"));facChim.position.set(1.7,2.3,-0.4);fac.add(facChim);
+  var smoke=[];for(var si=0;si<3;si++){var sm=new THREE.Mesh(sph(0.16),new THREE.MeshLambertMaterial({color:"#FFFDF7",transparent:true,opacity:0.8}));sm.position.set(1.7,3,-0.4);fac.add(sm);smoke.push({m:sm,t:si*0.9})}
+  var signCv=document.createElement("canvas");signCv.width=512;signCv.height=128;
+  var signTex=new THREE.CanvasTexture(signCv);signTex.encoding=THREE.sRGBEncoding;
+  var signMesh=new THREE.Mesh(new THREE.PlaneGeometry(3.6,0.9),new THREE.MeshBasicMaterial({map:signTex}));
+  signMesh.position.set(0,1.05,0.92);fac.add(signMesh);
+  var conveyor=new THREE.Mesh(box(4.4,0.22,0.7),mat("#565B85"));conveyor.position.set(0,0.11,-1.35);fac.add(conveyor);
+  var slotsG=new THREE.Group();slotsG.position.set(0,0,-1.35);fac.add(slotsG);
+  blob(fac,4.6);
+  function drawSign(filled,night){
+    var g=signCv.getContext("2d");
+    g.fillStyle="#171B3A";g.fillRect(0,0,512,128);
+    g.fillStyle="#F2B32C";g.font="700 20px 'JetBrains Mono', monospace";g.textAlign="left";
+    g.fillText(night?"НОЧНАЯ СМЕНА · ZZZ":"ЗАКАЗ:",16,30);
+    var w=S.word,n=w.length,cw=Math.min(64,(512-32)/n),x0=(512-cw*n)/2;
+    for(var i=0;i<n;i++){
+      var x=x0+i*cw;
+      g.strokeStyle="#565B85";g.lineWidth=3;g.strokeRect(x+4,44,cw-8,68);
+      if(filled[i]){g.fillStyle=TYPECOL[typeOf(w[i])];g.fillRect(x+7,47,cw-14,62);
+        g.fillStyle="#fff";g.font="900 "+Math.floor(cw*0.62)+"px Unbounded, Arial";g.textAlign="center";g.fillText(w[i],x+cw/2,92);}
+      else{g.fillStyle="#565B85";g.font="900 34px Arial";g.textAlign="center";g.fillText("·",x+cw/2,90);}
+    }
+    signTex.needsUpdate=true;
+  }
+  /* trees, lamps, market */
+  var trees=[];
+  var treeSpots=[[-3.4,-2.6],[3.6,-2.8],[-3.6,0.8],[3.8,0.6],[-1.8,3.9],[7,-2],[7,2],[-7,0],[-7,-3.4]];
+  treeSpots.forEach(function(p){
+    var g=new THREE.Group();g.position.set(p[0],0,p[1]);scene.add(g);
+    var tr=new THREE.Mesh(cyl(0.09,0.12,0.5),mat("#8A5A2B"));tr.position.y=0.25;g.add(tr);
+    var cr=new THREE.Mesh(sph(0.42),mat("#2FA65A"));cr.position.y=0.75;g.add(cr);
+    var cr2=new THREE.Mesh(sph(0.3),mat("#3FBF6B"));cr2.position.set(0.18,1,0.1);g.add(cr2);
+    blob(g,0.9);trees.push({g:g,base:p});
+  });
+  var lampM=new THREE.MeshLambertMaterial({color:"#F2B32C",emissive:"#F2B32C",emissiveIntensity:0});
+  [[-5.9,-5.9],[5.9,-5.9],[-5.9,5.9],[5.9,5.9]].forEach(function(p){
+    var g=new THREE.Group();g.position.set(p[0],0,p[1]);scene.add(g);
+    var lp=new THREE.Mesh(cyl(0.04,0.05,1.5),mat("#2A2F5B"));lp.position.y=0.75;g.add(lp);
+    var lb=new THREE.Mesh(sph(0.13),lampM);lb.position.y=1.55;g.add(lb);
+  });
+  var market=new THREE.Group();market.position.set(2.6,0,-7.3);scene.add(market);
+  var stall=new THREE.Mesh(box(1.4,0.7,1),mat("#FFFDF7"));stall.position.y=0.35;market.add(stall);
+  var awn=new THREE.Mesh(box(1.6,0.12,1.2),mat("#2FA65A"));awn.position.y=1.05;market.add(awn);
+  [-0.6,0.6].forEach(function(px){var pp=new THREE.Mesh(cyl(0.04,0.04,1),mat("#2A2F5B"));pp.position.set(px,0.5,0.5);market.add(pp)});
+  blob(market,1.8);
+  var cafe=new THREE.Group();cafe.position.set(-2.6,0,-7.3);scene.add(cafe);
+  var cb=new THREE.Mesh(box(1.3,0.8,1),mat("#F2B32C"));cb.position.y=0.4;cafe.add(cb);
+  var cr3=new THREE.Mesh(cone(1,0.6,4),mat("#E8452C"));cr3.position.y=1.1;cr3.rotation.y=Math.PI/4;cafe.add(cr3);
+  blob(cafe,1.7);
+  /* cars */
+  function makeCar(col,len){
+    var g=new THREE.Group();scene.add(g);
+    var b=new THREE.Mesh(box(len,0.32,0.62),mat(col));b.position.y=0.3;g.add(b);
+    var cab=new THREE.Mesh(box(len*0.5,0.26,0.54),mat("#BFE3F7"));cab.position.set(-len*0.08,0.58,0);g.add(cab);
+    var wm=mat("#171B3A"),wheels=[];
+    [[-len*0.32,0.3],[len*0.32,0.3],[-len*0.32,-0.3],[len*0.32,-0.3]].forEach(function(p){
+      var w=new THREE.Mesh(cyl(0.13,0.13,0.08,10),wm);w.rotation.x=Math.PI/2;w.position.set(p[0],0.13,p[1]);g.add(w);wheels.push(w);
+    });
+    var hlM=new THREE.MeshLambertMaterial({color:"#FFFDF7",emissive:"#F2B32C",emissiveIntensity:0});
+    var hl=new THREE.Mesh(sph(0.06),hlM);hl.position.set(len/2,0.32,0.2);g.add(hl);
+    var hl2=hl.clone();hl2.position.z=-0.2;g.add(hl2);
+    blob(g,len*0.8);
+    return{g:g,wheels:wheels,hlM:hlM,t:Math.random(),speed:0,base:2.3,spin:0,yield:true,rolled:false};
+  }
+  var cars=[makeCar("#E8452C",1.05),makeCar("#F2B32C",1.5)];
+  cars[1].t=0.5;
+  var RING=[[5,-5],[5,5],[-5,5],[-5,-5]],PER=40;
+  function ringPos(t){
+    t=((t%1)+1)%1;var d=t*PER,seg=Math.floor(d/10),f=(d%10)/10;
+    var a=RING[seg],b=RING[(seg+1)%4];
+    return{x:a[0]+(b[0]-a[0])*f,z:a[1]+(b[1]-a[1])*f,ang:Math.atan2(b[0]-a[0],b[1]-a[1])};
+  }
+  var ZEBRA_T=0.875; /* midpoint of edge 3: (-5,-5)->(5,-5) at x=0 */
+  function ringDistToZebra(t){var d=Math.abs(((t%1)+1)%1-ZEBRA_T);return Math.min(d,1-d)*PER}
+  /* rain */
+  var rainN=520,rainPos=new Float32Array(rainN*3);
+  for(var ri2=0;ri2<rainN;ri2++){rainPos[ri2*3]=rnd(-10,10);rainPos[ri2*3+1]=rnd(0,12);rainPos[ri2*3+2]=rnd(-10,10)}
+  var rainGeo=new THREE.BufferGeometry();rainGeo.setAttribute("position",new THREE.BufferAttribute(rainPos,3));
+  var rainPts=new THREE.Points(rainGeo,new THREE.PointsMaterial({color:0x9DB8FF,size:0.09,transparent:true,opacity:0.65}));
+  rainPts.visible=false;scene.add(rainPts);
+  /* coins */
+  var coins=[];var coinM=new THREE.MeshLambertMaterial({color:"#F2B32C",emissive:"#B57F0A",emissiveIntensity:0.35});
+  for(var ci=0;ci<14;ci++){var cm=new THREE.Mesh(cyl(0.14,0.14,0.05,12),coinM);cm.visible=false;scene.add(cm);coins.push({m:cm,life:0,vx:0,vy:0,vz:0})}
+  function coinBurst(x,y,z){
+    var n=0;
+    coins.forEach(function(c){if(c.life<=0&&n<8){c.life=1.3;c.m.visible=true;c.m.position.set(x+rnd(-0.6,0.6),y,z+rnd(-0.3,0.3));c.vx=rnd(-0.5,0.5);c.vy=rnd(2.4,3.6);c.vz=rnd(-0.5,0.5);n++}});
+  }
+  /* toast */
+  function toast(msg,cls){
+    var box=$("toasts"),el=document.createElement("div");el.className="toast"+(cls?" "+cls:"");el.textContent=msg;
+    box.appendChild(el);while(box.children.length>3)box.removeChild(box.firstChild);
+    setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el)},2400);
+  }
+  /* agents */
+  var agents=[],slots=[],filled=[],assemble=0;
+  function slotPos(i){var n=S.word.length;return{x:0.4+(i-(n-1)/2)*0.62,z:1.25}}
+  function buildSlots(){
+    while(slotsG.children.length)slotsG.remove(slotsG.children[0]);
+    slots=[];filled=[];
+    for(var i=0;i<S.word.length;i++){
+      var p=slotPos(i);
+      var ped=new THREE.Mesh(cyl(0.24,0.28,0.14,12),mat("#F2B32C"));ped.position.set(p.x-0.4,0.29,p.z-2.6);slotsG.add(ped);
+      slots.push(p);filled.push(false);
+    }
+  }
+  function pathHomeToSlot(a){
+    var h=houseX[a.home];
+    return[{x:h,z:-6.1},{x:0,z:-6.1,wait:true},{x:0,z:-3.9},{x:a.slotPos.x,z:-1.5},{x:a.slotPos.x,z:a.slotPos.z}];
+  }
+  function routeTo(a,tx,tz){
+    var z=a.g.position.z,path=[];
+    if(z<-5.9&&tz>-4){path.push({x:0,z:-6.1,wait:true},{x:0,z:-3.9})}
+    else if(z>-4.1&&tz<-5.9){path.push({x:0,z:-3.9},{x:0,z:-6.1})}
+    path.push({x:tx,z:tz});return path;
+  }
+  function spawnAgent(ch,slotIdx){
+    var g=makeLetter(ch);scene.add(g);
+    var a={ch:ch,g:g,home:agents.length%4,slot:slotIdx,state:"toWork",path:[],t:Math.random()*9,speed:1.35,dizzy:0,phaseT:0,scale:0.01};
+    a.slotPos=slotIdx!=null?slotPos(slotIdx):null;
+    var hx=houseX[a.home];g.position.set(hx+rnd(-0.3,0.3),0,-6.1);
+    a.path=slotIdx!=null?pathHomeToSlot(a):[{x:hx,z:-6.1}];
+    if(slotIdx==null)a.state="wander";
+    agents.push(a);return a;
+  }
+  function removeAgent(a){scene.remove(a.g);var i=agents.indexOf(a);if(i>=0)agents.splice(i,1)}
+  function setWord(w,keepPop){
+    S.word=w;assemble=0;
+    var need=w.split("");
+    if(!keepPop&&S.pop<need.length){S.pop=need.length;$("cPopV").textContent=S.pop;toast("Для «"+w+"» нужно ≥"+need.length+" букв","blue")}
+    /* keep agents matching needed multiset */
+    var pool=need.slice(),keep=[];
+    agents.forEach(function(a){var i=pool.indexOf(a.ch);if(i>=0){pool.splice(i,1);keep.push(a)}else removeAgent(a)});
+    keep.forEach(function(a,i){a.slot=i;a.slotPos=slotPos(i);a.state="toWork";a.path=routeTo(a,a.slotPos.x,a.slotPos.z);a.dizzy=0});
+    pool.forEach(function(ch){var a=spawnAgent(ch,keep.length);keep.push(a);a.slot=agents.indexOf(a)});
+    /* fix slot indices for all required */
+    var req=agents.filter(function(a){return a.slot!=null&&need.indexOf(a.ch)>=0});
+    var used={};var idx=0;
+    agents.forEach(function(a){a.slot=null;a.slotPos=null});
+    need.forEach(function(ch,i){
+      var a=null;
+      for(var k=0;k<agents.length;k++){if(agents[k].ch===ch&&agents[k].slot==null&&!used[k]){a=agents[k];used[k]=true;break}}
+      if(!a)a=spawnAgent(ch,null);
+      a.slot=i;a.slotPos=slotPos(i);a.state="toWork";a.path=routeTo(a,a.slotPos.x,a.slotPos.z);
+    });
+    /* fillers */
+    var have=agents.length;
+    while(agents.length>S.pop){var f=agents.filter(function(a){return a.slot==null});if(!f.length)break;removeAgent(f[f.length-1])}
+    while(agents.length<S.pop){var ch=pick(ALPHABET.split(""));var a=spawnAgent(ch,null);a.slot=null;a.slotPos=null;a.state="wander";a.path=routeTo(a,rnd(-3.5,3.5),rnd(-3,3.5))}
+    buildSlots();drawSign(filled,isNight());
+  }
+  function isNight(){return S.hour>=22||S.hour<6}
+  function goNight(){
+    agents.forEach(function(a){
+      if(a.state!=="toHome"&&a.state!=="sleep"){a.state="toHome";var hx=houseX[a.home];a.path=routeTo(a,hx,-6.35)}
+    });
+    drawSign(filled,true);
+  }
+  function goMorning(){
+    agents.forEach(function(a){
+      if(a.state==="sleep"||a.state==="toHome"){
+        a.g.scale.setScalar(1);a.scale=1;
+        if(a.slot!=null){a.state="toWork";a.path=pathHomeToSlot(a)}
+        else{a.state="wander";a.path=routeTo(a,rnd(-3.5,3.5),rnd(-3,3.5))}
+      }
+    });
+    drawSign(filled,false);
+  }
+  function snapPhase(){
+    if(isNight()){agents.forEach(function(a){a.state="sleep";a.g.position.set(houseX[a.home],0,-6.35);a.g.scale.setScalar(0.01);a.scale=0.01});drawSign(filled,true)}
+    else{agents.forEach(function(a){a.g.scale.setScalar(1);a.scale=1;
+      if(a.slot!=null){a.state="work";a.g.position.set(a.slotPos.x,0,a.slotPos.z);filled[a.slot]=true}
+      else{a.state="wander";a.g.position.set(rnd(-3,3),0,rnd(-2,3));a.path=[{x:rnd(-3.5,3.5),z:rnd(-3,3.5)}]}
+    });drawSign(filled,false)}
+  }
+  /* payouts */
+  function completeWord(){
+    var p=payout(S.word,1,80,false,false).total;
+    S.words++;S.tokens+=p;
+    toast("«"+S.word+"» +"+p+" Т");play("word");
+    coinBurst(0.4,2.2,2.2);
+    agents.forEach(function(a){if(a.slot!=null){a.state="celebrate";a.phaseT=1.1}});
+    filled=filled.map(function(){return false});assemble=0;drawSign(filled,false);
+    syncStats();
+  }
+  function crash(a,car){
+    S.crashes++;S.tokens=Math.max(0,S.tokens-15);S.crashCd=6;
+    a.dizzy=2;a.state="dizzy";car.spin=1;
+    toast("ДТП! −15 Т","red");play("honk");syncStats();
+  }
+  function syncStats(){$("stDay").textContent=S.day;$("stWords").textContent=S.words;$("stTok").textContent=fmt(S.tokens);$("stCrash").textContent=S.crashes}
+  /* lighting by hour */
+  var skyStops=[[0,"#131735"],[5,"#131735"],[7,"#F7C98B"],[10,"#CFE8F7"],[17,"#CFE8F7"],[19.5,"#F2955C"],[22,"#131735"],[24,"#131735"]];
+  var colA=new THREE.Color(),colB=new THREE.Color(),skyC=new THREE.Color();
+  function skyAt(h){
+    for(var i=0;i<skyStops.length-1;i++){
+      if(h>=skyStops[i][0]&&h<=skyStops[i+1][0]){
+        var f=(h-skyStops[i][0])/Math.max(0.001,skyStops[i+1][0]-skyStops[i][0]);
+        colA.set(skyStops[i][1]);colB.set(skyStops[i+1][1]);
+        return skyC.copy(colA).lerp(colB,f);
+      }
+    }
+    return skyC.set("#CFE8F7");
+  }
+  function applyLight(){
+    var c=skyAt(S.hour);
+    if(S.rain)c.lerp(new THREE.Color("#8C9BB8"),0.55);
+    renderer.setClearColor(c);scene.fog.color.copy(c);
+    var day=Math.max(0,Math.sin((S.hour-6)/12*Math.PI));
+    var night=1-day;
+    sun.intensity=(0.18+day*1.0)*(S.rain?0.6:1);
+    sun.color.set(S.hour>17||S.hour<8?"#FFD9A0":"#FFFFFF");
+    if(night>0.75)sun.color.set("#7A86C8");
+    hemi.intensity=0.35+day*0.6;
+    var glow=Math.max(0,night-0.35)/0.65;
+    houses.forEach(function(h){h.winM.emissiveIntensity=glow*1.2});
+    lampM.emissiveIntensity=glow*1.6;
+    cars.forEach(function(cr){cr.hlM.emissiveIntensity=glow*1.5});
+    var ped=S.lightT<4;
+    tlRed.material.emissiveIntensity=S.light?(ped?0.95:0.08):0.05;
+    tlGrn.material.emissiveIntensity=S.light?(ped?0.08:0.95):0.05;
+    tl.visible=true;tlBox.material=S.light?mat("#171B3A"):mat("#565B85");
+  }
+  /* resize */
+  function resize(){
+    var w=wrap.clientWidth,h=wrap.clientHeight;
+    if(w===0||h===0)return;
+    renderer.setSize(w,h,false);
+    var asp=w/h,halfH=5.4*S.zoom;
+    camera.left=-halfH*asp;camera.right=halfH*asp;camera.top=halfH;camera.bottom=-halfH;
+    camera.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(wrap);
+  /* camera drag */
+  var dragging=false,lastX=0;
+  wrap.addEventListener("pointerdown",function(e){dragging=true;lastX=e.clientX;wrap.classList.add("grabbing");wrap.setPointerCapture(e.pointerId)});
+  wrap.addEventListener("pointermove",function(e){if(!dragging)return;S.azT=Math.max(-0.9,Math.min(0.9,S.azT+(e.clientX-lastX)*0.006));lastX=e.clientX});
+  function endDrag(){dragging=false;wrap.classList.remove("grabbing")}
+  wrap.addEventListener("pointerup",endDrag);wrap.addEventListener("pointercancel",endDrag);
+  /* visibility */
+  var onScreen=true,tabVisible=!document.hidden;
+  new IntersectionObserver(function(es){onScreen=es[0].isIntersecting},{threshold:0.05}).observe(wrap);
+  document.addEventListener("visibilitychange",function(){tabVisible=!document.hidden});
+  /* controls */
+  function syncCtrl(){
+    $("cSpeedV").textContent="×"+S.speed;$("cPopV").textContent=S.pop;
+    var hh=Math.floor(S.hour),mm=Math.floor((S.hour-hh)*60);
+    $("cTimeV").textContent=(hh<10?"0":"")+hh+":"+(mm<10?"0":"")+mm;
+    $("cTime").value=S.hour.toFixed(1);
+    $("cPause").setAttribute("aria-pressed",String(S.paused));
+    $("cPause").querySelector("use").setAttribute("href",S.paused?"#i-play":"#i-pause");
+  }
+  $("cPause").addEventListener("click",function(){S.paused=!S.paused;syncCtrl();play("click")});
+  $("cSpeed").addEventListener("input",function(){S.speed=+this.value;syncCtrl()});
+  $("cTime").addEventListener("input",function(){
+    var old=S.hour;S.hour=+this.value;
+    if(Math.abs(S.hour-old)>3)snapPhase();
+    else if(isNight())goNight();else goMorning();
+    syncCtrl();
+  });
+  $("cPopM").addEventListener("click",function(){
+    if(S.pop<=Math.max(4,S.word.length)){toast("Меньше нельзя: слово не собрать","blue");return}
+    S.pop--;var f=agents.filter(function(a){return a.slot==null});if(f.length)removeAgent(f[f.length-1]);syncCtrl();play("click");
+  });
+  $("cPopP").addEventListener("click",function(){
+    if(S.pop>=20){toast("Квартал полон: 20 букв","blue");return}
+    S.pop++;var a=spawnAgent(pick(ALPHABET.split("")),null);a.slot=null;a.slotPos=null;a.state="wander";a.path=routeTo(a,rnd(-3.5,3.5),rnd(-3,3.5));syncCtrl();play("click");
+  });
+  $("cRain").addEventListener("change",function(){S.rain=this.checked;rainPts.visible=S.rain;toast(S.rain?"Ливень: риск ДТП ×1,6":"Дождь кончился",S.rain?"blue":"");play("click")});
+  $("cLight").addEventListener("change",function(){S.light=this.checked;toast(S.light?"Светофор работает: риск −50%":"Светофор выключен — берегись!","");play("click")});
+  $("cWord").addEventListener("change",function(){setWord(this.value);toast("Новый заказ: «"+this.value+"»","mag");play("click")});
+  $("cZoomIn").addEventListener("click",function(){S.zoomT=Math.max(0.62,S.zoomT/1.16);play("click")});
+  $("cZoomOut").addEventListener("click",function(){S.zoomT=Math.min(1.7,S.zoomT*1.16);play("click")});
+  $("cRand").addEventListener("click",function(){
+    houses.forEach(function(h){var c=pick(HOUSE_COL);h.roof.material=mat(c)});
+    trees.forEach(function(t){t.g.position.set(t.base[0]+rnd(-0.6,0.6),0,t.base[1]+rnd(-0.6,0.6))});
+    agents.forEach(function(a){if(a.slot==null){removeAgent(a)}});
+    while(agents.length<S.pop){var a=spawnAgent(pick(ALPHABET.split("")),null);a.slot=null;a.slotPos=null;a.state="wander";a.path=routeTo(a,rnd(-3.5,3.5),rnd(-3,3.5))}
+    toast("Квартал пересобран","mag");play("born");
+  });
+  $("cReset").addEventListener("click",function(){
+    S.speed=1;S.hour=9;S.day=1;S.pop=8;S.rain=false;S.light=true;S.paused=false;S.tokens=0;S.words=0;S.crashes=0;S.azT=0;S.zoomT=1;S.lightT=0;S.crashCd=0;
+    $("cSpeed").value=1;$("cRain").checked=false;$("cLight").checked=true;$("cWord").value="КОТ";rainPts.visible=false;
+    agents.slice().forEach(removeAgent);setWord("КОТ",true);snapPhase();syncStats();syncCtrl();toast("Макет сброшен");play("click");
+  });
+  /* init world state */
+  setWord("КОТ",true);snapPhase();syncStats();syncCtrl();resize();
+  /* main loop */
+  var clock=new THREE.Clock(),elapsed=0;
+  var wanderSpots=[[-3,0],[3,-1],[2.6,-6.6],[-2.6,-6.6],[0,3.6]];
+  function tick(){
+    requestAnimationFrame(tick);
+    var dt=Math.min(clock.getDelta(),0.05);
+    if(!onScreen||!tabVisible)return;
+    elapsed+=dt;
+    /* camera damping always */
+    S.az+=(S.azT-S.az)*Math.min(1,dt*6);
+    S.zoom+=(S.zoomT-S.zoom)*Math.min(1,dt*6);
+    var az=Math.PI/4+S.az+(reduced?0:Math.sin(elapsed*0.18)*0.015),el2=0.6155,R=26;
+    camera.position.set(Math.cos(el2)*Math.sin(az)*R,Math.sin(el2)*R,Math.cos(el2)*Math.cos(az)*R);
+    camera.lookAt(0,0.4,0);
+    var halfH=5.4*S.zoom,asp=wrap.clientWidth/Math.max(1,wrap.clientHeight);
+    camera.left=-halfH*asp;camera.right=halfH*asp;camera.top=halfH;camera.bottom=-halfH;camera.updateProjectionMatrix();
+    var simDt=S.paused?0:dt*S.speed*(isNight()?2.2:1);
+    if(simDt>0){
+      var prevHour=S.hour;
+      S.hour+=simDt/60*24;
+      if(S.hour>=24){S.hour-=24;S.day++;syncStats()}
+      if(prevHour<22&&S.hour>=22)goNight();
+      if((prevHour>=22||prevHour<6)&&S.hour>=6&&S.hour<22)goMorning();
+      if(Math.floor(elapsed*2)%2===0)syncCtrl();
+      S.lightT=(S.lightT+simDt)%10;
+      S.crashCd=Math.max(0,S.crashCd-simDt);
+      var ped=S.lightT<4,night=isNight();
+      /* agents */
+      agents.forEach(function(a){
+        var ud=a.g.userData;
+        a.t+=simDt*7;
+        if(a.scale<1&&a.state!=="sleep"){a.scale=Math.min(1,a.scale+dt*3);a.g.scale.setScalar(a.scale)}
+        if(a.state==="sleep"){a.g.scale.setScalar(0.01);a.scale=0.01;return}
+        if(a.state==="dizzy"){
+          a.dizzy-=simDt;a.g.rotation.z=Math.sin(a.t*2)*0.5;ud.body.position.y=0.3;
+          if(a.dizzy<=0){a.g.rotation.z=0;a.state=a.slot!=null?"toWork":"wander";
+            a.path=a.slot!=null?routeTo(a,a.slotPos.x,a.slotPos.z):routeTo(a,rnd(-3,3),rnd(-2,3));}
+          return;
+        }
+        if(a.state==="celebrate"){
+          a.phaseT-=simDt;
+          a.g.position.y=Math.abs(Math.sin(a.t*1.6))*0.35;
+          ud.body.scale.set(1+Math.sin(a.t*3)*0.08,1-Math.sin(a.t*3)*0.08,1);
+          if(a.phaseT<=0){a.g.position.y=0;ud.body.scale.set(1,1,1);a.state="wander";
+            var w=pick(wanderSpots);a.path=routeTo(a,w[0]+rnd(-0.5,0.5),w[1]+rnd(-0.4,0.4));a.phaseT=rnd(1.5,3)}
+          return;
+        }
+        if(a.state==="work"){
+          ud.body.position.y=0.62+Math.sin(a.t*0.9)*0.03;
+          ud.l1.rotation.x=0;ud.l2.rotation.x=0;
+          a.g.rotation.y=Math.PI;
+          return;
+        }
+        if(a.state==="wander"&&a.path.length===0){
+          a.phaseT-=simDt;
+          ud.body.position.y=0.62+Math.abs(Math.sin(a.t*0.5))*0.04;
+          if(a.phaseT<=0){
+            if(a.slot!=null){a.state="toWork";a.path=routeTo(a,a.slotPos.x,a.slotPos.z)}
+            else{var w2=pick(wanderSpots);a.path=routeTo(a,w2[0]+rnd(-0.5,0.5),w2[1]+rnd(-0.4,0.4));a.phaseT=rnd(1.5,3)}
+          }
+          return;
+        }
+        /* walking states */
+        if(a.path.length){
+          var node=a.path[0];
+          if(node.wait&&S.light&&!ped&&Math.abs(a.g.position.z+6.1)<0.15){
+            ud.body.position.y=0.62+Math.abs(Math.sin(a.t*0.4))*0.02;return;
+          }
+          var dx=node.x-a.g.position.x,dz=node.z-a.g.position.z,dist=Math.sqrt(dx*dx+dz*dz);
+          var sp=a.speed*(S.rain?0.8:1)*simDt;
+          if(dist<=sp){a.g.position.x=node.x;a.g.position.z=node.z;a.path.shift();
+            if(a.path.length===0){
+              if(a.state==="toWork"){a.state="work";if(a.slot!=null){filled[a.slot]=true;drawSign(filled,night)}}
+              else if(a.state==="toHome"){a.state="sleep"}
+            }
+          }else{
+            a.g.position.x+=dx/dist*sp;a.g.position.z+=dz/dist*sp;
+            a.g.rotation.y=Math.atan2(dx,dz);
+            ud.body.position.y=0.62+Math.abs(Math.sin(a.t))*0.07;
+            ud.l1.rotation.x=Math.sin(a.t)*0.7;ud.l2.rotation.x=-Math.sin(a.t)*0.7;
+            ud.body.scale.y=1+Math.sin(a.t*2)*0.04;
+          }
+        }
+        ud.umb.visible=S.rain&&(a.state==="toWork"||a.state==="toHome"||a.state==="wander");
+      });
+      /* word assembly */
+      if(!night){
+        var all=S.word.length>0;
+        for(var i=0;i<S.word.length;i++){if(!filled[i]){all=false;break}}
+        if(all){assemble+=simDt;if(assemble>=1.2)completeWord()}
+      }
+      /* cars */
+      cars.forEach(function(car,idx){
+        if(car.spin>0){car.spin-=simDt;car.g.rotation.y+=simDt*9;car.speed=0;
+          if(car.spin<=0){car.g.rotation.y=ringPos(car.t).ang}return}
+        var distZ=ringDistToZebra(car.t);
+        var mustStop=false;
+        if(night)mustStop=true;
+        else if(distZ<2.2&&distZ>0.4){
+          if(S.light&&ped)mustStop=true;
+          if(!S.light){
+            if(!car.rolled){car.rolled=true;car.yield=Math.random()<(S.rain?0.68:0.86)}
+            if(!car.yield)mustStop=false;else mustStop=agents.some(function(a){return a.state!=="sleep"&&Math.abs(a.g.position.x)<1&&a.g.position.z>-6.2&&a.g.position.z<-3.8});
+          }
+        }
+        if(distZ>3)car.rolled=false;
+        var target=night?0:(S.rain?car.base*1.15:car.base)*(mustStop?0:1);
+        car.speed+=(target-car.speed)*Math.min(1,simDt*4);
+        car.t+=car.speed*simDt/PER;
+        var p=ringPos(car.t);
+        car.g.position.set(p.x,0,p.z);car.g.rotation.y=p.ang;
+        car.wheels.forEach(function(w){w.rotation.y+=car.speed*simDt*4});
+        /* crash check */
+        if(!S.light&&!night&&S.crashCd<=0&&car.speed>1){
+          agents.forEach(function(a){
+            if(S.crashCd>0||a.state==="sleep"||a.state==="dizzy")return;
+            var ddx=a.g.position.x-car.g.position.x,ddz=a.g.position.z-car.g.position.z;
+            if(ddx*ddx+ddz*ddz<0.55&&Math.abs(a.g.position.z+5)<0.9)crash(a,car);
+          });
+        }
+      });
+      /* rain */
+      if(S.rain){
+        var arr=rainGeo.attributes.position.array;
+        for(var k=0;k<rainN;k++){arr[k*3+1]-=simDt*9;if(arr[k*3+1]<0){arr[k*3+1]=12;arr[k*3]=rnd(-10,10);arr[k*3+2]=rnd(-10,10)}}
+        rainGeo.attributes.position.needsUpdate=true;
+      }
+      /* smoke */
+      smoke.forEach(function(s){
+        s.t+=simDt*0.5;var f=s.t%2.4;
+        s.m.position.y=3+f*1.1;s.m.position.x=1.7+Math.sin(s.t*2)*0.15;
+        s.m.scale.setScalar(0.6+f*0.5);s.m.material.opacity=Math.max(0,0.75-f*0.32);
+      });
+      /* coins */
+      coins.forEach(function(c){
+        if(c.life>0){c.life-=simDt;c.vy-=simDt*5;
+          c.m.position.x+=c.vx*simDt;c.m.position.y+=c.vy*simDt;c.m.position.z+=c.vz*simDt;
+          c.m.rotation.x+=simDt*7;c.m.rotation.z+=simDt*5;
+          c.m.scale.setScalar(Math.max(0.01,Math.min(1,c.life)));
+          if(c.life<=0)c.m.visible=false;}
+      });
+      applyLight();
+    }
+    renderer.render(scene,camera);
+  }
+  applyLight();
+  tick();
+}
+})();
+</script>
+</body>
+</html>
