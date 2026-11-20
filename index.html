@@ -167,7 +167,6 @@ canvas#gl.build{cursor:crosshair}
 .pill.c{background:rgba(45,107,228,.2);color:var(--cons2);border:1px solid rgba(45,107,228,.45)}
 .pill.s{background:rgba(47,168,79,.2);color:var(--sign2);border:1px solid rgba(47,168,79,.45)}
 .pill.g{background:rgba(245,183,34,.16);color:var(--gold2);border:1px solid rgba(245,183,34,.4)}
-.pill.t{background:rgba(23,190,187,.16);color:var(--trans2);border:1px solid rgba(23,190,187,.4)}
 .need{margin:7px 0}
 .need .lab{display:flex;justify-content:space-between;font-size:10.5px;color:var(--dim);margin-bottom:3px}
 .need .lab b{color:var(--txt);font-weight:700}
@@ -629,7 +628,7 @@ function glInit(){
     fatal('Графический контекст потерян. Нажмите «Перезагрузить» — город сохранён.');},false);
 }
 function vdiv(l,d){if(isGL2)gl.vertexAttribDivisor(l,d);else instExt.vertexAttribDivisorANGLE(l,d);}
-function drawInst(m,c,n){if(isGL2)gl.drawArraysInstanced(m,0,c,n);else instExt.drawArraysInstancedANGLE(m,0,c,n);}
+function drawInst(m,first,c,n){if(isGL2)gl.drawArraysInstanced(m,first,c,n);else instExt.drawArraysInstancedANGLE(m,first,c,n);}
 function shader(t,src){var s=gl.createShader(t);gl.shaderSource(s,src);gl.compileShader(s);
  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error('Шейдер: '+gl.getShaderInfoLog(s));return s;}
 function program(vs,fs,attrs,unis){
@@ -654,11 +653,10 @@ function texUpdate(t,c){gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE
 var MESH_VS=[
 'attribute vec3 aPos;attribute vec3 aNrm;attribute vec2 aUV;attribute float aFace;',
 'attribute vec4 iPosRot;attribute vec3 iScl;attribute vec3 iCol;attribute vec4 iExt;',
-'uniform mat4 uVP;uniform float uStride;uniform vec2 uGrid;',
+'uniform mat4 uVP;uniform vec2 uGrid;',
 'varying vec3 vN;varying vec2 vUV;varying vec3 vC;varying float vF;varying float vA;varying float vE;varying vec3 vW;',
 'void main(){',
-' vec3 lp=aPos;lp.x-=iExt.y*uStride;',
-' vec3 p=lp*iScl;float c=cos(iPosRot.w),s=sin(iPosRot.w);',
+' vec3 p=aPos*iScl;float c=cos(iPosRot.w),s=sin(iPosRot.w);',
 ' p=vec3(p.x*c+p.z*s,p.y,-p.x*s+p.z*c);',
 ' vec3 n=aNrm/max(iScl,vec3(0.0001));',
 ' n=normalize(vec3(n.x*c+n.z*s,n.y,-n.x*s+n.z*c));',
@@ -757,7 +755,7 @@ function makeGeom(pos,nrm,uv,face){
     arr[i*9+6]=uv[i*2];arr[i*9+7]=uv[i*2+1];arr[i*9+8]=face[i];
   }
   var b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,arr,gl.STATIC_DRAW);
-  return{buf:b,count:n};
+  return{buf:b,count:n,first:0};
 }
 function quadPush(P,N,U,F,a,b,c,d,nx,ny,nz,face){
   var pts=[a,b,c,a,c,d];
@@ -814,7 +812,7 @@ function cylGeom(seg){
 function quadGeom2(){
   var arr=new Float32Array([-0.5,-0.5,0,1,0.5,-0.5,1,1,0.5,0.5,1,0,-0.5,-0.5,0,1,0.5,0.5,1,0,-0.5,0.5,0,0]);
   var b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,arr,gl.STATIC_DRAW);
-  return{buf:b,count:6};
+  return{buf:b,count:6,first:0};
 }
 var IF=14;
 function Batch(geom,max){
@@ -856,14 +854,17 @@ function bindSpr(pr,b){
 }
 function disableAttrs(pr){for(var k in pr.a){var l=pr.a[k];if(l>=0){vdiv(l,0);gl.disableVertexAttribArray(l);}}}
 
-/* ====================== ЛИТЕРЫ ====================== */
-var GLYPH={stride:2.4,geom:null,mask:null,eyes:[],width:[],texel:[1/768,1/480]};
+/* ====================== ЛИТЕРЫ ======================
+   Каждая литера — отдельный диапазон вершин в общем буфере.
+   Инстансы рисуются по группам: одна буква = один draw call.
+   ==================================================== */
+var GLYPH={geom:null,parts:[],mask:null,eyes:[],width:[],texel:[1/768,1/480]};
 function buildGlyphs(fontFam){
   var CELL=96,COLS=8,ROWS=5,W=COLS*CELL,H=ROWS*CELL,R=48;
   var c=document.createElement('canvas');c.width=W;c.height=H;
   var x=c.getContext('2d');
   x.textAlign='center';x.textBaseline='middle';
-  var P=[],N=[],U=[],F=[],D=0.32,eyes=[],widths=[];
+  var P=[],N=[],U=[],F=[],D=0.32,eyes=[],widths=[],parts=[];
   for(var i=0;i<33;i++){
     var ch=ALPHA[i],cx=(i%COLS)*CELL,cy=((i/COLS)|0)*CELL;
     var fs=76;
@@ -886,8 +887,8 @@ function buildGlyphs(fontFam){
     maxX=Math.min(R-1,maxX+1);maxY=Math.min(R-1,maxY+1);
     var bw=maxX-minX+1,bh=maxY-minY+1,ASP=bw/bh;
     widths.push(ASP);
-    var off=i*GLYPH.stride;
-    var X=function(g){return off+((g-minX)/bw-0.5)*ASP;};
+    var first=P.length/3;
+    var X=function(g){return((g-minX)/bw-0.5)*ASP;};
     var Y=function(g){return 1-(g-minY)/bh;};
     var u0=(cx+minX*2)/W,u1=(cx+(maxX+1)*2)/W,v0=(cy+minY*2)/H,v1=(cy+(maxY+1)*2)/H;
     var face=function(z,nz,flip){
@@ -933,6 +934,16 @@ function buildGlyphs(fontFam){
         for(var k2=0;k2<6;k2++){P.push(qs[k2][0],qs[k2][1],qs[k2][2]);N.push(gnx,gny,0);U.push(0,0);F.push(0);}
       }
     }
+    var cnt=P.length/3-first;
+    if(cnt<3){
+      var L2=-ASP*0.35,R2=ASP*0.35;
+      var f0=[L2,0.1,D/2],f1=[R2,0.1,D/2],f2=[R2,0.9,D/2],f3=[L2,0.9,D/2];
+      var fp=[f0,f1,f2,f0,f2,f3];
+      var fu=[[u0,v1],[u1,v1],[u1,v0],[u0,v1],[u1,v0],[u0,v0]];
+      for(var k3=0;k3<6;k3++){P.push(fp[k3][0],fp[k3][1],fp[k3][2]);N.push(0,0,1);U.push(fu[k3][0],fu[k3][1]);F.push(1);}
+      cnt=P.length/3-first;
+    }
+    parts.push({first:first,count:cnt});
     var eyeY=minY+bh*0.26,eyeX=(minX+maxX)/2,span=0;
     for(gy=minY;gy<minY+bh*0.55;gy++){
       var lo=-1,hi=-1;
@@ -944,7 +955,7 @@ function buildGlyphs(fontFam){
   }
   GLYPH.mask=texFromCanvas(c);
   GLYPH.geom=makeGeom(P,N,U,F);
-  GLYPH.eyes=eyes;GLYPH.width=widths;
+  GLYPH.parts=parts;GLYPH.eyes=eyes;GLYPH.width=widths;
 }
 
 /* ====================== АТЛАСЫ ====================== */
@@ -1208,7 +1219,7 @@ function findAgent(id){for(var i=0;i<S_.agents.length;i++)if(S_.agents[i].id===i
 function findFam(id){for(var i=0;i<S_.families.length;i++)if(S_.families[i].id===id)return S_.families[i];return null;}
 function findBuid(id){for(var i=0;i<S_.buildings.length;i++)if(S_.buildings[i].uid===id)return S_.buildings[i];return null;}
 
-/* ====================== ПУТИ (быстрый A*) ====================== */
+/* ====================== ПУТИ ====================== */
 var routeCache=new Map();
 var AN=MAP*MAP;
 var aG=new Float32Array(AN),aF=new Float32Array(AN),aFrom=new Int32Array(AN),
@@ -1749,7 +1760,7 @@ function scheduleOf(a){
   return 'evening';
 }
 function hauntPoint(a){
-  var b,p;
+  var b;
   if(a.haunt==='park'){b=findB('park')[0];if(b)return{x:b.x+rnd(0.4,b.w-0.4),y:b.y+rnd(0.4,b.h-0.4),k:'park'};}
   if(a.haunt==='cafe'){b=findB('cafe')[0];if(b)return{x:b.dx+rnd(-1.2,1.2),y:b.dy+rnd(0.4,1.6),k:'wander'};}
   if(a.haunt==='market'){b=findB('market')[0];if(b)return{x:b.dx+rnd(-1.2,1.2),y:b.dy+rnd(0.4,1.6),k:'wander'};}
@@ -2550,7 +2561,7 @@ function render(now){
   gl.disableVertexAttribArray(pr.a.aPos);gl.disableVertexAttribArray(pr.a.aUV);
   var B=G.batches,k;
   for(k in B)B[k].reset();
-  var faceRot=C.az,fca=Math.cos(faceRot),fsa=Math.sin(faceRot);
+  var faceRot=C.az;
   for(i=0;i<S_.buildings.length;i++){
     var b=S_.buildings[i],d=BDEF[b.id];if(!d)continue;
     var cx=b.x+b.w/2,cz=b.y+b.h/2;
@@ -2602,7 +2613,11 @@ function render(now){
     var a=S_.agents[i];
     var ax=a.x+a.ox,az2=a.y+a.oz;
     if(!inView(ax,az2,C,0.12))continue;
-    var gi=ALPHA.indexOf(a.ch),cls=clsOf(a.ch),base=CLSCOL[cls];
+    var gi=ALPHA.indexOf(a.ch);
+    if(gi<0)continue;
+    var gb=B['g'+gi];
+    if(!gb||gb.n>=gb.max)continue;
+    var cls=clsOf(a.ch),base=CLSCOL[cls];
     var cr=base[0],cg=base[1],cb=base[2];
     if(a.stage==='child'){cr=Math.min(1,cr*1.15+0.12);cg=Math.min(1,cg*1.15+0.12);cb=Math.min(1,cb*1.15+0.12);}
     if(a.stage==='elder'){cr=cr*0.72+0.16;cg=cg*0.72+0.16;cb=cb*0.72+0.16;}
@@ -2615,7 +2630,7 @@ function render(now){
     var legH=0.22*size,yBase=legH+bob;
     var asp=GLYPH.width[gi]||0.7;
     var rot=faceRot+a.yaw;
-    B.glyph.push(ax,yBase,az2,sxz,sy,sxz,rot,cr,cg,cb,-1,gi,1,a.sick?0.1:0);
+    gb.push(ax,yBase,az2,sxz,sy,sxz,rot,cr,cg,cb,-1,0,1,a.sick?0.1:0);
     var e=GLYPH.eyes[gi]||{x:0,y:0.75,span:0.4};
     var ca=Math.cos(rot),sa=Math.sin(rot);
     var off=Math.min(0.135,e.span*0.27)*sxz,ez=0.175*sxz;
@@ -2697,7 +2712,6 @@ function render(now){
   }
   pr=G.progs.mesh;gl.useProgram(pr.p);
   gl.uniformMatrix4fv(pr.u.uVP,false,C.vp);
-  gl.uniform1f(pr.u.uStride,GLYPH.stride);
   gl.uniform2f(pr.u.uGrid,FAC.grid[0],FAC.grid[1]);
   gl.uniform3fv(pr.u.uLight,LIGHT);gl.uniform3fv(pr.u.uSky,tc.sky);gl.uniform3fv(pr.u.uGnd,tc.gnd);
   gl.uniform3fv(pr.u.uSun,tc.sun);gl.uniform3f(pr.u.uInk,0.09,0.07,0.16);
@@ -2707,9 +2721,12 @@ function render(now){
   gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,FAC.tex);gl.uniform1i(pr.u.uFac,1);
   gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);
   var mk=['box','roof','sphere','cyl'];
-  for(i=0;i<4;i++){var bb=B[mk[i]];if(bb.n){bindMesh(pr,bb);drawInst(gl.TRIANGLES,bb.geom.count,bb.n);}}
+  for(i=0;i<4;i++){var bb=B[mk[i]];if(bb.n){bindMesh(pr,bb);drawInst(gl.TRIANGLES,bb.geom.first,bb.geom.count,bb.n);}}
   gl.disable(gl.CULL_FACE);
-  if(B.glyph.n){bindMesh(pr,B.glyph);drawInst(gl.TRIANGLES,B.glyph.geom.count,B.glyph.n);}
+  for(i=0;i<33;i++){
+    var gg=B['g'+i];
+    if(gg&&gg.n){bindMesh(pr,gg);drawInst(gl.TRIANGLES,gg.geom.first,gg.geom.count,gg.n);}
+  }
   disableAttrs(pr);
   pr=G.progs.spr;gl.useProgram(pr.p);
   gl.uniformMatrix4fv(pr.u.uVP,false,C.vp);
@@ -2717,9 +2734,9 @@ function render(now){
   gl.uniform2f(pr.u.uGrid,SPR.grid[0],SPR.grid[1]);
   gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,SPR.tex);gl.uniform1i(pr.u.uT,0);
   gl.depthMask(false);
-  if(B.shadow.n){bindSpr(pr,B.shadow);drawInst(gl.TRIANGLES,B.shadow.geom.count,B.shadow.n);}
-  if(B.spr.n){bindSpr(pr,B.spr);drawInst(gl.TRIANGLES,B.spr.geom.count,B.spr.n);}
-  if(B.add.n){gl.blendFunc(gl.ONE,gl.ONE);bindSpr(pr,B.add);drawInst(gl.TRIANGLES,B.add.geom.count,B.add.n);
+  if(B.shadow.n){bindSpr(pr,B.shadow);drawInst(gl.TRIANGLES,B.shadow.geom.first,B.shadow.geom.count,B.shadow.n);}
+  if(B.spr.n){bindSpr(pr,B.spr);drawInst(gl.TRIANGLES,B.spr.geom.first,B.spr.geom.count,B.spr.n);}
+  if(B.add.n){gl.blendFunc(gl.ONE,gl.ONE);bindSpr(pr,B.add);drawInst(gl.TRIANGLES,B.add.geom.first,B.add.geom.count,B.add.n);
     gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);}
   disableAttrs(pr);
   gl.depthMask(true);
@@ -2743,7 +2760,7 @@ function render(now){
 var labelLayer=$('labels'),speechLayer=$('speech'),labelEls=[],speechEls=[];
 function mkLabelEl(layer,arr){
   var el=document.createElement('div');
-  el.style.display='none';el._x=-999;el._y=-999;el._o=-1;el._t='';
+  el.style.display='none';el._x=-999;el._y=-999;el._o=-1;el._t='';el._c='';
   layer.appendChild(el);arr.push(el);return el;
 }
 function placeEl(el,x,y,o,txt,color){
@@ -3869,7 +3886,7 @@ async function boot(){
     setLoad(0.06,'Инициализируем WebGL…');
     glInit();
     G.progs.mesh=program(MESH_VS,MESH_FS,['aPos','aNrm','aUV','aFace','iPosRot','iScl','iCol','iExt'],
-      ['uVP','uStride','uGrid','uMask','uFac','uLight','uSky','uGnd','uSun','uInk','uTexel','uFog','uFogCol']);
+      ['uVP','uGrid','uMask','uFac','uLight','uSky','uGnd','uSun','uInk','uTexel','uFog','uFogCol']);
     G.progs.spr=program(SPR_VS,SPR_FS,['aPos','aUV','iOff','iScl','iCol','iExt'],['uVP','uRight','uUp','uGrid','uT']);
     G.progs.gnd=program(GND_VS,GND_FS,['aPos','aUV'],['uVP','uT','uSun','uSky','uGnd','uFogCol','uFog']);
     G.progs.sky=program(FULL_VS,SKY_FS,['aPos'],['uGA','uGB','uCl','uSt','uMix','uNight','uTime','uCloud']);
@@ -3904,9 +3921,12 @@ async function boot(){
     G.batches={
       box:Batch(boxGeom(),420),roof:Batch(roofGeom(),420),
       sphere:Batch(sphereGeom(6,4),400),cyl:Batch(cylGeom(5),1400),
-      glyph:Batch(GLYPH.geom,180),
       shadow:SprBatch(q2,700),spr:SprBatch(q2,2000),add:SprBatch(q2,1400)
     };
+    for(var gi=0;gi<33;gi++){
+      var part=GLYPH.parts[gi];
+      G.batches['g'+gi]=Batch({buf:GLYPH.geom.buf,count:part.count,first:part.first},160);
+    }
     setLoad(0.86,'Основываем город…');
     await tick();
     QUAL={dpr:Math.min(window.devicePixelRatio||1,1.75),tilt:1,particles:1,post:true};
