@@ -3086,3 +3086,509 @@ function openSet(){
   row('Эффекты','Фонемы букв, станок, ДТП','<input type="range" min="0" max="1" step="0.05" value="'+s.sfx+'" data-rng="sfx">')+
   '<div class="hr"></div><div class="grid3">'+
   '<div class="card"><h4>Город</h4><div class="muted">День '+S_.day+' · '+pop()+' жителей · '+S_.buildings.length+' зданий · '+dictCount()+' слов</div></div>'+
+  '<div class="card"><h4>Экономика</h4><div class="muted">Казна '+fmt(S_.tokens)+'₮ · заработано '+fmt(S_.stats.earned)+'₮ · репутация '+Math.round(S_.rep)+'</div></div>'+
+  '<div class="card"><h4>Поколения</h4><div class="muted">Семей '+S_.families.length+' · родилось '+S_.stats.born+' · звёзд '+S_.memorial.length+'</div></div>'+
+  '</div><div class="hr"></div><div class="muted">Автосохранение каждые 30 секунд в IndexedDB. Офлайн-прогресс досимулируется до 8 часов и подаётся газетой «Пока вас не было…».</div></div>'+
+  '<div class="shFoot"><button class="btn ghost" data-act="export">⬇ Экспорт</button>'+
+  '<button class="btn ghost" data-act="import">⬆ Импорт</button>'+
+  '<button class="btn ghost" data-act="save">💾 Сохранить</button>'+
+  '<button class="btn ghost" data-act="new" style="border-color:var(--danger);color:var(--vowel2)">↺ Новый город</button>'+
+  '<button class="btn gold" data-close>Готово</button></div>','set');
+}
+$('sheet').addEventListener('click',e=>{
+  if(modalKind!=='set')return;
+  const t=e.target.closest('[data-tog]');
+  if(t){
+    const k=t.dataset.tog;
+    if(k==='fontScale'){S_.settings.fontScale=S_.settings.fontScale>1?1:1.25;document.documentElement.style.setProperty('--fs',S_.settings.fontScale);}
+    else S_.settings[k]=!S_.settings[k];
+    openSet();AU.click();return;
+  }
+  const a=e.target.closest('[data-act]');if(!a)return;
+  const k=a.dataset.act;
+  if(k==='save'){saveGame();toast('Город сохранён','ok');}
+  else if(k==='export'){
+    const blob=new Blob([JSON.stringify(serialize())],{type:'application/json'});
+    const url=URL.createObjectURL(blob),el=document.createElement('a');
+    el.href=url;el.download='bukvograd-day'+S_.day+'.json';el.click();URL.revokeObjectURL(url);
+    toast('Город выгружен в JSON','ok');
+  }else if(k==='import'){
+    const inp=document.createElement('input');inp.type='file';inp.accept='.json';
+    inp.onchange=()=>{
+      const f=inp.files[0];if(!f)return;
+      const r=new FileReader();
+      r.onload=()=>{try{deserialize(JSON.parse(r.result));closeModal();refreshAll();toast('Город загружен','ok');}catch(err){toast('Файл повреждён','bad');}};
+      r.readAsText(f);
+    };
+    inp.click();
+  }else if(k==='new'){
+    if(confirm('Основать новый город? Нынешний уйдёт звёздами.')){
+      S_.agents.slice().forEach(a=>killAgent(a,'переезд в Алфавитный рай'));
+      setTimeout(()=>{newCity();closeModal();toast('Новый Буквоград основан','gold');},500);
+    }
+  }
+});
+$('sheet').addEventListener('input',e=>{
+  const r=e.target.closest('[data-rng]');
+  if(r){const k=r.dataset.rng;S_.settings[k]=+r.value;
+    if(AU.ctx)(k==='music'?AU.musicG:AU.sfxG).gain.value=+r.value;return;}
+  const s=e.target.closest('[data-set]');
+  if(s){S_.settings[s.dataset.set]=s.value;applyQuality();toast('Качество: '+s.value,'');}
+});
+
+/* ------------------------------ TYPESETTING MINI-GAME ------------------------------ */
+let TYPE={idx:0,hits:0,beat:0,dir:1};
+function openTypeset(){
+  const A=S_.active;
+  if(!A){toast('Сначала примите заказ','bad');AU.err();return;}
+  TYPE={idx:0,hits:0,beat:0,dir:1};
+  while(TYPE.idx<A.slots.length&&A.slots[TYPE.idx].filled)TYPE.idx++;
+  renderTypeset();
+}
+function renderTypeset(){
+  const A=S_.active;if(!A){closeModal();return;}
+  const avail=availableLetters(),used={};
+  A.slots.forEach(s=>{if(s.aid)used[s.ch]=(used[s.ch]||0)+1;});
+  const counts={};
+  for(const c in avail)counts[c]=avail[c]-(used[c]||0);
+  const bonus=1+(TYPE.hits/Math.max(1,A.slots.length))*.5;
+  openModal(head('Ручная вёрстка','Ставьте литеры в такт станка: попадание в золотую зону даёт качество до ×1,5')+
+  '<div class="shBody"><div id="tsFeed" style="color:var(--gold2)">'+(TYPE.hits?'Точно! ×'+bonus.toFixed(2):'Ловите ритм')+'</div>'+
+  '<div id="beat"><div class="zone"></div><div class="mark" id="beatMark" style="left:'+(TYPE.beat*100)+'%"></div><div class="lbl">ЗОЛОТАЯ ЗОНА</div></div>'+
+  '<div id="tsSlots">'+A.slots.map((s,i)=>'<div class="slot '+clsOf(s.ch)+(s.filled?' filled':'')+(i===TYPE.idx?' next':'')+'">'+s.ch+'</div>').join('')+'</div>'+
+  '<div class="hr"></div><div class="muted" style="text-align:center;margin-bottom:9px">Наборная касса — свободные буквы города</div>'+
+  '<div id="cash">'+ALPHA.split('').map(ch=>{
+    const n=counts[ch]||0;
+    return '<button class="tile '+clsOf(ch)+'" data-t="'+ch+'" '+(n<=0?'disabled':'')+'>'+ch+'<small>'+n+'</small></button>';
+  }).join('')+'</div></div>'+
+  '<div class="shFoot"><span class="muted" style="margin-right:auto">Качество вёрстки: <b style="color:var(--gold2)">×'+bonus.toFixed(2)+'</b></span>'+
+  '<button class="btn ghost" data-close>Закрыть</button></div>','ts');
+}
+$('sheet').addEventListener('click',e=>{
+  if(modalKind!=='ts')return;
+  const t=e.target.closest('[data-t]');if(!t)return;
+  const A=S_.active;if(!A){closeModal();return;}
+  const ch=t.dataset.t,slot=A.slots[TYPE.idx];
+  if(!slot){closeModal();return;}
+  if(ch!==slot.ch){
+    const f=$('tsFeed');if(f){f.textContent='Мимо! Нужна '+slot.ch;f.style.color='var(--danger)';}
+    AU.err();
+    const sl=$('tsSlots').children[TYPE.idx];
+    if(sl){sl.style.transform='translateX(-5px)';setTimeout(()=>{if(sl)sl.style.transform='';},90);}
+    return;
+  }
+  const b=S_.buildings.find(x=>x.uid===A.bid);
+  const cands=S_.agents.filter(a=>a.ch===ch&&!a.job&&(a.stage==='adult'||a.stage==='elder')&&!a.sick&&!a.striking&&a.hospital<=0);
+  if(!cands.length||!b){
+    const f=$('tsFeed');if(f){f.textContent='Нет свободной буквы '+ch;f.style.color='var(--warn)';}
+    AU.err();return;
+  }
+  const inZone=TYPE.beat>.42&&TYPE.beat<.58;
+  if(inZone){TYPE.hits++;AU.chime();}else AU.click();
+  const p=slotPos(b,TYPE.idx,A.slots.length);
+  cands.sort((u,v)=>d2(u.x,u.y,p.x,p.y)-d2(v.x,v.y,p.x,p.y));
+  const a=cands[0];
+  a.job={slot:TYPE.idx};slot.aid=a.id;slot.filled=true;
+  a.x=p.x;a.y=p.y;a.path=[];a.state='work';a.squash=1;
+  burstSpark(p.x,p.y,6);
+  TYPE.idx++;
+  while(TYPE.idx<A.slots.length&&A.slots[TYPE.idx].filled)TYPE.idx++;
+  A.manual=TYPE.hits/Math.max(1,A.slots.length);
+  if(TYPE.idx>=A.slots.length){
+    closeModal();dockSig='';renderDock();
+    toast('Вёрстка завершена: ×'+(1+A.manual*.5).toFixed(2),'gold');
+  }else renderTypeset();
+  dockSig='';renderDock();
+});
+function offlineReport(rep){
+  openModal(head('Пока вас не было…','Офлайн-досимуляция '+rep.hours.toFixed(1)+' ч (лимит 8 ч)')+
+  '<div class="shBody"><div class="paper"><h3>ВЕСТНИК БУКВОГРАДА</h3>'+
+  '<div class="dateline">Спецвыпуск · город без мэра</div>'+
+  '<div class="lead">Город жил сам '+rep.hours.toFixed(1)+' часа. Буквы не заметили вашего отсутствия — но казна заметила.</div>'+
+  '<div class="rule"></div><div class="cols">'+
+  '<p><b>Производство.</b> Собрано '+rep.words+' слов, заработано '+fmt(rep.earned)+'₮. Налоги в казну: '+fmt(rep.tax)+'₮.</p>'+
+  '<p><b>Поколения.</b> Родилось '+rep.born+', ушло звёздами '+rep.died+'. Свадеб: '+rep.weds+'.</p>'+
+  '<p><b>Происшествия.</b> ДТП: '+rep.crashes+'. Заболело: '+rep.sick+'.</p>'+
+  '<p><b>Казна.</b> Было '+fmt(rep.before)+'₮, стало '+fmt(S_.tokens)+'₮.</p>'+
+  '<p><b>Слово смены.</b> «'+rep.word+'» — печаталось при луне.</p>'+
+  '</div></div></div><div class="shFoot"><button class="btn gold" data-close>Взяться за дело</button></div>','offline');
+}
+
+/* ------------------------------ ONBOARDING ------------------------------ */
+const ONB=[
+ {t:'Я последняя в алфавите, но первая в мэрии! Стартовые жители: <b>Д, О, М, А, К, Т</b>. Смотрите — они уже выходят из общаги «Ы».',c:()=>true},
+ {t:'Заказ <b>«ДОМ»</b> уже на станке. Буквы сами идут через зебру и встают литерами в печатную форму.',c:()=>!!S_.active},
+ {t:'Слово собрано! <em>Длиннее и реже — дороже.</em> 20% уходит в казну мэра, остальное — буквам.',c:()=>S_.stats.words>=1},
+ {t:'Буквы голодают. Кликните по букве и <b>покормите</b> её — или они сами пойдут в кафе «Щи да Каша».',c:()=>S_.stats.fed>=1},
+ {t:'Ой, лёгкое ДТП! Все целы, но <em>светофор бы не помешал</em>. Вкладка 🛣 → Светофор (40₮).',c:()=>S_.stats.crashes>=1},
+ {t:'Теперь поставьте <b>светофор</b> и постройте <b>Комнату</b> (150₮) во вкладке 🏠 — буквам нужно гнездо.',
+  c:()=>S_.buildings.some(b=>b.house&&b.house!=='dorm')&&S_.tiles.includes(TILE.LIGHT)},
+ {t:'Слышите? <b>М + А = МА!</b> Это слог. Это судьба. Постройте ЗАГС (300₮) и жените пару — кнопка ♥ вверху.',c:()=>hasB('zags')},
+ {t:'Город живёт сам. Стройте словоцеха, следите за настроением, ждите аиста. <em>Печатать!</em>',c:()=>S_.stats.weds>=1}
+];
+function onbShow(){
+  if(!started||S_.onb>=ONB.length){$('mascot').classList.remove('on');return;}
+  $('mStep').textContent='Шаг '+(S_.onb+1)+' из '+ONB.length;
+  $('mTxt').innerHTML=ONB[S_.onb].t;
+  $('mascot').classList.add('on');
+}
+function onbAdvance(){
+  if(S_.onb>=ONB.length)return;
+  S_.onb++;S_.onbT=0;AU.chime();
+  if(S_.onb>=ONB.length){$('mascot').classList.remove('on');toast('Онбординг пройден. Город ваш!','gold');}
+  else onbShow();
+  renderRail();
+}
+$('mX').onclick=()=>$('mascot').classList.remove('on');
+
+/* ------------------------------ SAVE ------------------------------ */
+let db=null;
+function idb(){
+  return new Promise(res=>{
+    if(!('indexedDB'in window))return res(null);
+    let r;
+    try{r=indexedDB.open('bukvograd',1);}catch(e){return res(null);}
+    r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('saves'))d.createObjectStore('saves');};
+    r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);
+  });
+}
+function serialize(){
+  return{v:1,t:Date.now(),tokens:S_.tokens,day:S_.day,clock:S_.clock,rep:S_.rep,
+    tiles:Array.from(S_.tiles),buildings:S_.buildings,
+    agents:S_.agents.map(a=>Object.assign({},a,{path:[],target:null,targetB:null,job:null,state:'idle'})),
+    families:S_.families,dict:S_.dict,news:S_.news.slice(0,40),memorial:S_.memorial,events:S_.events,
+    stats:S_.stats,onb:S_.onb,nextId:S_.nextId,wod:S_.wod,settings:S_.settings,weather:S_.weather,
+    active:S_.active,offers:S_.offers,eggs:S_.eggs,playTime:S_.playTime,strikeDays:S_.strikeDays};
+}
+function deserialize(o){
+  if(!o||o.v!==1)throw new Error('bad save');
+  S_=freshState();
+  S_.tokens=o.tokens;S_.day=o.day;S_.clock=o.clock;S_.rep=o.rep;
+  S_.tiles=new Uint8Array(o.tiles);
+  S_.buildings=o.buildings||[];S_.agents=o.agents||[];S_.families=o.families||[];
+  S_.dict=o.dict||{};S_.news=o.news||[];S_.memorial=o.memorial||[];S_.events=o.events||{};
+  S_.stats=Object.assign(S_.stats,o.stats||{});S_.onb=o.onb||0;S_.nextId=o.nextId||1;S_.wod=o.wod;
+  S_.settings=Object.assign(S_.settings,o.settings||{});
+  S_.weather=o.weather||'clear';S_.active=o.active||null;S_.offers=o.offers||[];
+  S_.eggs=o.eggs||[];S_.playTime=o.playTime||0;S_.strikeDays=o.strikeDays||0;
+  S_.agents.forEach(a=>{a.path=[];a.target=null;a.targetB=null;a.job=null;a.state='idle';a.dead=false;
+    a.sayT=0;a.strikeT=a.striking?HOUR*8:0;});
+  if(S_.active)S_.active.slots.forEach(s=>{s.aid=null;s.filled=false;});
+  routeCache.clear();groundDirty=true;
+  BUS=null;TRAM=null;P_=[];FLOATS.length=0;
+  applySettings();
+}
+function applySettings(){
+  document.documentElement.style.setProperty('--fs',S_.settings.fontScale);
+  applyQuality();
+  if(AU.ctx){AU.musicG.gain.value=S_.settings.music;AU.sfxG.gain.value=S_.settings.sfx;}
+}
+async function saveGame(){
+  const data=serialize();
+  try{
+    if(!db)db=await idb();
+    if(db)await new Promise(res=>{const tx=db.transaction('saves','readwrite');tx.objectStore('saves').put(data,'city');tx.oncomplete=res;tx.onerror=res;tx.onabort=res;});
+    else localStorage.setItem('bukvograd',JSON.stringify(data));
+  }catch(e){try{localStorage.setItem('bukvograd',JSON.stringify(data));}catch(e2){}}
+  S_.lastSave=Date.now();
+}
+async function loadGame(){
+  try{
+    if(!db)db=await idb();
+    let data=null;
+    if(db)data=await new Promise(res=>{const tx=db.transaction('saves','readonly');const r=tx.objectStore('saves').get('city');r.onsuccess=()=>res(r.result||null);r.onerror=()=>res(null);});
+    if(!data){const s=localStorage.getItem('bukvograd');if(s)data=JSON.parse(s);}
+    return data;
+  }catch(e){return null;}
+}
+function offlineSim(ms){
+  const hours=Math.min(8,ms/3600000);
+  if(hours<.05)return null;
+  const before=S_.tokens;
+  const rep={hours,before,words:0,earned:0,tax:0,born:0,died:0,weds:0,crashes:0,sick:0,word:'НОЧЬ'};
+  const steps=Math.min(240,Math.round(hours*30));
+  const ws=workshops();
+  const rng=mulberry(S_.day*77+Math.round(hours*10));
+  for(let i=0;i<steps;i++){
+    S_.clock+=3600/30;
+    if(S_.clock>=86400){S_.clock-=86400;S_.day++;}
+    const night=gameHour()>=22||gameHour()<6;
+    S_.agents.slice().forEach(a=>{
+      a.age+=1/30;
+      a.food=clamp(a.food-(night?1:2.2),0,100);
+      a.energy=clamp(a.energy+(night?4:-1.4),0,100);
+      if(a.food<20&&a.wallet>=4){a.wallet-=4;S_.tokens+=1;a.food=clamp(a.food+45,0,100);}
+      a.hp=clamp(a.hp+(a.food<=0?-.4:.15),0,100);
+      if(a.sick){if(rng()<.06)a.sick=false;}
+      else if(rng()<.002){a.sick=true;rep.sick++;}
+      if(a.hp<=0){killAgent(a,'болезнь');rep.died++;return;}
+      if(a.stage==='child'&&a.age>=3)a.stage='teen';
+      else if(a.stage==='teen'&&a.age>=6)a.stage='adult';
+      if(a.age>=50&&rng()<(a.age>=65?.03:.0007)){killAgent(a,'старость');rep.died++;}
+    });
+    if(!night&&ws.length){
+      const m=availableLetters(),w=pick(ws),d=BDEF[w.id];
+      const pool=DICT.filter(x=>x.length>=d.min&&x.length<=d.max&&canBuild(x,m));
+      if(pool.length&&rng()<.55){
+        const word=pick(pool),team=[],need={};
+        for(const c of word)need[c]=(need[c]||0)+1;
+        let okw=true;
+        for(const c in need){
+          const cs=S_.agents.filter(a=>a.ch===c&&team.indexOf(a)<0&&(a.stage==='adult'||a.stage==='elder'));
+          if(cs.length<need[c]){okw=false;break;}
+          for(let k=0;k<need[c];k++)team.push(cs[k]);
+        }
+        if(okw){
+          const mood=team.reduce((s,a)=>s+a.mood,0)/team.length;
+          const r=rewardFor(word,team,mood),tax=Math.round(r.total*.2);
+          S_.tokens+=tax;rep.tax+=tax;rep.earned+=r.total;rep.words++;
+          S_.stats.words++;S_.stats.earned+=r.total;
+          team.forEach(a=>{a.wallet+=Math.max(1,Math.round(r.total*.8/team.length));a.words++;a.xp++;
+            while(a.level<10&&a.xp>=12*a.level){a.xp-=12*a.level;a.level++;}});
+          const dd=S_.dict[word]||(S_.dict[word]={n:0,best:0,day:S_.day,team:word});
+          dd.n++;dd.best=Math.max(dd.best,r.total);dd.last=S_.day;
+          rep.word=word;
+        }
+      }
+    }
+    if(rng()<.004){
+      const bs=S_.agents.filter(a=>!a.fam&&a.stage==='adult'&&!isSign(a.ch));
+      if(bs.length>1){
+        const a=pick(bs),b=pick(bs),s=syllable(a.ch,b.ch,false),h=freeHome(2);
+        if(s.ok&&h&&a.wallet+b.wallet>=80){
+          const cost=Math.round(80*(RARITY[a.ch]+RARITY[b.ch])/2);
+          a.wallet-=cost/2;b.wallet-=cost/2;S_.tokens+=Math.round(cost*.5);
+          const fid=S_.nextId++;
+          S_.families.push({id:fid,slog:s.slog,a:a.id,b:b.id,chest:0,kids:[],harmony:s.harmony,day:S_.day});
+          a.fam=fid;b.fam=fid;a.home=h.uid;b.home=h.uid;rep.weds++;S_.stats.weds++;
+        }
+      }
+    }
+    if(rng()<.003&&S_.families.length&&hasB('kinder')){
+      const f=pick(S_.families);
+      if(f.chest>=150){f.chest-=150;if(birth(f))rep.born++;}
+    }
+    if(rng()<.002&&S_.agents.length){
+      const a=pick(S_.agents);rep.crashes++;S_.stats.crashes++;
+      a.hp=clamp(a.hp-30,1,100);a.trans='foot';
+    }
+  }
+  S_.agents.forEach(a=>{
+    const h=homeOf(a);
+    if(h){a.x=h.dx+.5+rnd(-.6,.6);a.y=h.dy+.6+rnd(0,.8);}
+    a.state='idle';a.path=[];a.job=null;
+  });
+  S_.active=null;makeOffers();
+  newsAdd('offline','Пока мэра не было, город собрал '+rep.words+' слов и заработал '+fmt(rep.earned)+'₮.',null);
+  return rep;
+}
+
+/* ------------------------------ CITY ------------------------------ */
+function newCity(){
+  S_=freshState();
+  P_=[];FLOATS.length=0;routeCache.clear();BUS=null;TRAM=null;
+  for(let i=8;i<=39;i++){
+    setTile(i,10,TILE.ROAD);setTile(i,37,TILE.ROAD);
+    setTile(10,i,TILE.ROAD);setTile(37,i,TILE.ROAD);
+  }
+  for(let i=10;i<=37;i++){setTile(i,24,TILE.ROAD);setTile(24,i,TILE.ROAD);}
+  for(let i=14;i<=34;i++){setTile(i,17,TILE.ROAD);setTile(i,31,TILE.ROAD);}
+  [[24,24],[24,10],[24,37],[10,24],[37,24],[17,24],[31,24],[24,17],[24,31]].forEach(p=>setTile(p[0],p[1],TILE.ZEBRA));
+  [[22,17],[26,31],[17,22],[31,26]].forEach(p=>setTile(p[0],p[1],TILE.LAMP));
+  for(let y=40;y<45;y++)for(let x=3;x<9;x++)if(Math.hypot(x-6,y-42)<3)setTile(x,y,TILE.WATER);
+  placeBuilding('mayor',19,20,true);
+  placeBuilding('print',26,20,true);
+  placeBuilding('h_dorm',12,12,true);
+  placeBuilding('cafe',12,20,true);
+  placeBuilding('market',15,20,true);
+  placeBuilding('park',29,12,true);
+  placeBuilding('stop',30,22,true);
+  const dorm=findB('h_dorm')[0];
+  'ДОМАКТ'.split('').forEach(ch=>{
+    S_.agents.push(makeAgent(ch,{home:dorm.uid,x:dorm.dx+.5+rnd(-1,1),y:dorm.dy+.6+rnd(0,1),age:ri(8,26),wallet:ri(20,48)}));
+  });
+  S_.wod='ДОМ';
+  S_.offers=[{word:'ДОМ',hot:false,payout:rewardFor('ДОМ',null,70).total,miss:[]},
+             {word:'КОТ',hot:false,payout:rewardFor('КОТ',null,70).total,miss:[]},
+             {word:'МАМА',hot:false,payout:rewardFor('МАМА',null,70).total,miss:['М×1','А×1']}];
+  S_.active={word:'ДОМ',hot:false,bid:findB('print')[0].uid,
+    slots:'ДОМ'.split('').map(c=>({ch:c,aid:null,filled:false})),deadline:null,manual:0,press:0,pressed:false,t0:0};
+  assignSlots();
+  newsAdd('found','Мэр-Грамотей основал Буквоград. Ленточку перегрызла буква Ы, потому что с неё ничего не начинается.',{x:24,y:24});
+  newsAdd('flavor',pick(NEWS_T),null);
+  CAM.tx=24;CAM.ty=24;CAM.tzoom=11;CAM.az=Math.PI*.25;CAM.el=.6154;
+  CAM.vtx=24;CAM.vty=24;CAM.vzoom=11;CAM.vaz=CAM.az;CAM.vel=CAM.el;
+  groundDirty=true;dockSig='';inspSig='';evSig='';
+  applySettings();refreshAll();
+}
+function refreshAll(){
+  refreshTop();renderRail();dockSig='';renderDock();evSig='';renderEvents();onbShow();
+  $('tickTxt').textContent=S_.news[0]?S_.news[0].text:'Город просыпается…';
+  closeInsp();
+}
+
+/* ------------------------------ CONTROLS ------------------------------ */
+function setSpeed(v){
+  speed=v;
+  [...$('speedSeg').children].forEach(b=>b.classList.toggle('on',+b.dataset.sp===v));
+  if(v===0)toast('Пауза','');
+}
+$('speedSeg').addEventListener('click',e=>{const b=e.target.closest('[data-sp]');if(b){setSpeed(+b.dataset.sp);AU.click();}});
+$('btnSound').onclick=()=>{
+  auInit();auResume();
+  AU.on=!AU.on;
+  if(AU.master)AU.master.gain.linearRampToValueAtTime(AU.on?1:0,AU.ctx.currentTime+.15);
+  $('btnSound').textContent=AU.on?'🔊':'🔇';
+  $('btnSound').classList.toggle('on',AU.on);
+};
+$('btnNews').onclick=()=>{AU.click();openNews();};
+$('btnDict').onclick=()=>{AU.click();renderDict();};
+$('btnZags').onclick=()=>{AU.click();openZags();};
+$('btnSet').onclick=()=>{AU.click();openSet();};
+$('btnReroll').onclick=()=>{
+  if(S_.tokens<10){toast('Реролл стоит 10₮','bad');AU.err();return;}
+  S_.tokens-=10;makeOffers();dockSig='';renderDock();refreshTop();AU.click();toast('Новые заказы','');
+};
+$('btnCancel').onclick=()=>releaseOrder(true);
+$('btnTypeset').onclick=()=>{AU.click();openTypeset();};
+$('newsTick').onclick=()=>openNews();
+$('fab').onclick=()=>{$('rail').classList.toggle('open');AU.click();};
+$('btnZin').onclick=()=>{CAM.tzoom=clamp(CAM.tzoom*.8,4.5,32);AU.click();};
+$('btnZout').onclick=()=>{CAM.tzoom=clamp(CAM.tzoom*1.25,4.5,32);AU.click();};
+$('btnHome').onclick=()=>{CAM.tx=24;CAM.ty=24;CAM.tzoom=11;CAM.az=Math.PI*.25;CAM.el=.6154;AU.click();};
+
+/* ------------------------------ LOOP ------------------------------ */
+let last=0,acc=0,uiAcc=0,saveAcc=0,newsAcc=0,fpsAcc=0,fpsN=0,lowT=0;
+function loop(now){
+  requestAnimationFrame(loop);
+  if(!G.ok)return;
+  const rdt=Math.min(.1,(now-last)/1000||0);last=now;
+  fpsAcc+=rdt;fpsN++;
+  if(fpsAcc>2){
+    const fps=fpsN/fpsAcc;fpsAcc=0;fpsN=0;
+    if(fps<28&&S_.settings.quality!=='low'){
+      lowT++;
+      if(lowT>=2){S_.settings.quality=S_.settings.quality==='high'?'medium':'low';applyQuality();lowT=0;toast('Качество снижено: '+S_.settings.quality,'');}
+    }else lowT=0;
+  }
+  if(running&&speed>0){
+    acc+=rdt*speed;
+    let n=0;
+    while(acc>=.1&&n<12){simStep(.1);acc-=.1;n++;}
+    if(n>=12)acc=0;
+  }
+  camUpdate(rdt);
+  groundT+=rdt;
+  if(groundDirty&&groundT>.12){groundT=0;paintGround();}
+  if(modalKind==='ts'){
+    TYPE.beat+=TYPE.dir*rdt*1.35;
+    if(TYPE.beat>1){TYPE.beat=1;TYPE.dir=-1;}
+    if(TYPE.beat<0){TYPE.beat=0;TYPE.dir=1;}
+    const m=$('beatMark');if(m)m.style.left=(TYPE.beat*100)+'%';
+  }
+  render(now);
+  uiAcc+=rdt;
+  if(uiAcc>.25){uiAcc=0;refreshTop();renderDock();renderEvents();if(sel)renderInsp();}
+  saveAcc+=rdt;
+  if(saveAcc>30&&started){saveAcc=0;saveGame();}
+  newsAcc+=rdt;
+  if(newsAcc>80&&started){newsAcc=0;if(Math.random()<.6)newsAdd('flavor',pick(NEWS_T),null);}
+}
+
+/* ------------------------------ BOOT ------------------------------ */
+function bootTiles(){
+  const box=$('bootTiles');
+  const cols=['#E8384F','#2D6BE4','#2FA84F','#F5B722','#E0409A','#17BEBB','#E8384F','#2D6BE4','#2FA84F'];
+  'БУКВОГРАД'.split('').forEach((c,i)=>{
+    const b=document.createElement('b');
+    b.textContent=c;b.style.background=cols[i%cols.length];b.style.animationDelay=(i*.11)+'s';
+    box.appendChild(b);
+  });
+}
+function grain(){
+  const c=document.createElement('canvas');c.width=c.height=128;
+  const x=c.getContext('2d'),d=x.createImageData(128,128);
+  for(let i=0;i<d.data.length;i+=4){const v=Math.random()*255;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=16;}
+  x.putImageData(d,0,0);$('grain').style.backgroundImage='url('+c.toDataURL()+')';
+}
+function setLoad(p,t){$('loadBar').firstElementChild.style.width=(p*100)+'%';$('loadTxt').textContent=t;}
+async function boot(){
+  bootTiles();grain();
+  try{
+    setLoad(.05,'Инициализируем WebGL…');
+    glInit();
+    G.progs.mesh=program(MESH_VS,MESH_FS,['aPos','aNrm','aUV','aFace','iOff','iScl','iRot','iCol','iExt'],
+      ['uVP','uStride','uGrid','uMask','uFac','uLight','uSky','uGnd','uSun','uInk','uTexel','uFog','uFogCol']);
+    G.progs.spr=program(SPR_VS,SPR_FS,['aPos','aUV','iOff','iScl','iCol','iExt'],['uVP','uRight','uUp','uGrid','uT']);
+    G.progs.gnd=program(GND_VS,GND_FS,['aPos','aUV'],['uVP','uT','uSun','uSky','uGnd','uFogCol','uFog']);
+    G.progs.sky=program(FULL_VS,SKY_FS,['aPos'],['uTop','uBot','uHz','uNight','uTime','uAspect']);
+    G.progs.post=program(FULL_VS,POST_FS,['aPos'],['uT','uRes','uTilt','uVig','uGrain','uTime','uWarm']);
+    G.quadBuf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,G.quadBuf);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,1,1,-1,-1,1,1,-1,1]),gl.STATIC_DRAW);
+    G.groundBuf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,G.groundBuf);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([
+      0,0,MAP,0,1, MAP,0,MAP,1,1, MAP,0,0,1,0,
+      0,0,MAP,0,1, MAP,0,0,1,0, 0,0,0,0,0]),gl.STATIC_DRAW);
+    setLoad(.15,'Загружаем шрифты…');
+    try{
+      await Promise.race([
+        Promise.all([document.fonts.load('900 76px Unbounded','АБВ'),document.fonts.load('900 20px Rubik','А')]),
+        new Promise(r=>setTimeout(r,2500))]);
+    }catch(e){}
+    const fam=document.fonts.check('900 76px Unbounded')?'Unbounded, Rubik, sans-serif':'Rubik, Arial Black, sans-serif';
+    setLoad(.3,'Отливаем 33 литеры (extrude + контур)…');
+    await new Promise(r=>setTimeout(r,30));
+    buildGlyphs(fam);
+    setLoad(.55,'Печатаем фасады и спрайты…');
+    await new Promise(r=>setTimeout(r,20));
+    buildFacades();buildSprites();buildGroundCanvas();
+    setLoad(.72,'Собираем геометрию…');
+    await new Promise(r=>setTimeout(r,20));
+    const q2=quadGeom2();
+    G.batches={
+      box:Batch(boxGeom(),420),roof:Batch(roofGeom(),420),
+      sphere:Batch(sphereGeom(8,6),2600),cyl:Batch(cylGeom(7),1800),
+      glyph:Batch(GLYPH.geom,200),
+      shadow:SprBatch(q2,900),spr:SprBatch(q2,2200),add:SprBatch(q2,1800)
+    };
+    setLoad(.85,'Основываем город…');
+    await new Promise(r=>setTimeout(r,20));
+    QUAL={dpr:Math.min(devicePixelRatio||1,2),tilt:1,particles:1,post:true};
+    resize();
+    const saved=await loadGame();
+    let rep=null;
+    if(saved&&saved.v===1){
+      try{deserialize(saved);rep=offlineSim(Date.now()-saved.t);refreshAll();}
+      catch(e){newCity();}
+    }else newCity();
+    paintGround();
+    bindInput();
+    G.ok=true;running=true;
+    setLoad(1,'Город готов. '+pop()+' букв ждут мэра.');
+    $('btnStart').disabled=false;
+    $('btnStart').textContent=saved?'▶ ВЕРНУТЬСЯ В ГОРОД':'▶ ОСНОВАТЬ ГОРОД';
+    requestAnimationFrame(t=>{last=t;loop(t);});
+    $('btnStart').onclick=()=>{
+      auInit();auResume();
+      AU.on=true;$('btnSound').textContent='🔊';$('btnSound').classList.add('on');
+      $('boot').classList.add('off');
+      started=true;
+      AU.weather(S_.weather);
+      onbShow();
+      if(rep)setTimeout(()=>offlineReport(rep),500);
+      else setTimeout(()=>toast('Кликните по букве — откроется досье','gold'),1200);
+      setTimeout(()=>toast('ЛКМ — орбита · колесо — зум · ПКМ — панорама',''),4200);
+    };
+    window.addEventListener('beforeunload',()=>{if(started)saveGame();});
+    document.addEventListener('visibilitychange',()=>{if(document.hidden&&started)saveGame();});
+  }catch(err){
+    $('loadTxt').innerHTML='<span style="color:#FF6274">'+(err&&err.message?err.message:String(err))+'</span>';
+    $('btnStart').disabled=true;
+    console.error(err);
+  }
+}
+boot();
+})();
+</script>
+</body>
+</html>
